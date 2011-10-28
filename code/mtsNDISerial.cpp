@@ -37,9 +37,13 @@ mtsNDISerial::mtsNDISerial(const std::string & taskName, const double period) :
     mtsTaskPeriodic(taskName, period, false, 5000),
     IsTracking(false)
 {
+    StrayMarkers.SetSize(50, 5);
+    StrayMarkers.Zeros();
+
     mtsInterfaceProvided * provided = AddInterfaceProvided("Controller");
     if (provided) {
         StateTable.AddData(IsTracking, "IsTracking");
+        StateTable.AddData(StrayMarkers, "StrayMarkers");
 
         provided->AddCommandWrite(&mtsNDISerial::Beep, this, "Beep", mtsInt());
         provided->AddCommandVoid(&mtsNDISerial::PortHandlesInitialize, this, "PortHandlesInitialize");
@@ -498,7 +502,6 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name, const char 
         if (tool->Interface) {
             StateTable.AddData(tool->TooltipPosition, name + "Position");
             tool->Interface->AddCommandReadState(StateTable, tool->TooltipPosition, "GetPositionCartesian");
-            // Zihan Chen 04-27-2011 Add an interface to provide GetMarkerCartesian
             StateTable.AddData(tool->MarkerPosition, name + "Marker");
             tool->Interface->AddCommandReadState(StateTable, tool->MarkerPosition, "GetMarkerCartesian");
         }
@@ -891,7 +894,7 @@ void mtsNDISerial::ReportStrayMarkers(void)
     parsePointer += 2;
     CMN_LOG_CLASS_RUN_DEBUG << "ReportStrayMarkers: " << numMarkers << " stray markers detected" << std::endl;
 
-    // read out of volume reply
+    // read "out of volume" reply (see, API documentation for "Reply Option 1000" if this section seems convoluted)
     unsigned int outOfVolumeReplySize = static_cast<unsigned int>(ceil(numMarkers / 4.0));
     std::vector<bool> outOfVolumeReply(4 * outOfVolumeReplySize);
     unsigned int numGarbageBits = (4 * outOfVolumeReplySize) - numMarkers;
@@ -899,23 +902,31 @@ void mtsNDISerial::ReportStrayMarkers(void)
         std::bitset<4> outOfVolumeReplyByte(parsePointer[i]);
         outOfVolumeReplyByte.flip();
         for (unsigned int j = 0; j < 4; j++) {
-            outOfVolumeReply[4*i + j] = outOfVolumeReplyByte[3-j];
+            outOfVolumeReply[4*i + j] = outOfVolumeReplyByte[3-j];  // 0 if out of volume
         }
     }
     parsePointer += outOfVolumeReplySize;
 
-    // read each marker's position
-    vctDynamicVector<vctDouble3> A(numMarkers);
-    vctDynamicVector<bool> B(numMarkers);
+    // read marker positions
+    std::vector<vct3> markerPositions(numMarkers);
+    std::vector<bool> markerVisibilities(numMarkers);
+    StrayMarkers.Zeros();
     for (unsigned int i = 0; i < numMarkers; i++) {
-
         sscanf(parsePointer, "%7lf%7lf%7lf",
-               &(A[i].X()), &(A[i].Y()), &(A[i].Z()));
+               &(markerPositions[i].X()), &(markerPositions[i].Y()), &(markerPositions[i].Z()));
         parsePointer += (3 * 7);
-        A[i].Divide(100.0);
-        B[i] = outOfVolumeReply[i + numGarbageBits];
+        markerPositions[i].Divide(100.0);  // handle the implied decimal point
+        markerVisibilities[i] = outOfVolumeReply[i + numGarbageBits];  // handle garbage bits in reply
 
-        CMN_LOG_CLASS_RUN_DEBUG << "ReportStrayMarkers: " << i + 1 << "th marker visibility: " << B[i] << ", position: " << A[i] << std::endl;
+        StrayMarkers[i][0] = 1.0;  // if a marker is encountered
+        StrayMarkers[i][1] = markerVisibilities[i];  // if marker is NOT out of volume
+        StrayMarkers[i][2] = markerPositions[i].X();
+        StrayMarkers[i][3] = markerPositions[i].Y();
+        StrayMarkers[i][4] = markerPositions[i].Z();
+
+        CMN_LOG_CLASS_RUN_DEBUG << "ReportStrayMarkers: " << i + 1
+                                << "th marker visibility: " << markerVisibilities[i]
+                                << ", position: " << markerPositions[i] << std::endl;
     }
     parsePointer += 4;  // skip System Status
 

@@ -20,13 +20,10 @@ http://www.cisst.org/cisst/license.txt.
 
 /*!
   \file
-  \brief cisst component for NDI surgical trackers with serial interface.
+  \brief SAW component for NDI surgical trackers with serial (RS-232) interface.
   \ingroup sawComponents
 
-  \bug Missing support for 14400bps, 921600bps and 1228739bps baud rates in osaSerialPort.
-
-  \todo CMaking for component example, suitable both for internal and external build.
-  \todo Cleanup of CISST_QT4_WRAP_UI CMake macro.
+  \warning Missing support for 14400bps, 921600bps and 1228739bps baud rates in osaSerialPort.
 
   \todo Consider deriving from mtsTaskContinuous using an "adaptive" sleep.
   \todo Verify the need for existing sleep times.
@@ -52,6 +49,7 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisstVector/vctFixedSizeVectorTypes.h>
 #include <cisstOSAbstraction/osaSerialPort.h>
+#include <cisstMultiTask/mtsMatrix.h>
 #include <cisstMultiTask/mtsTaskPeriodic.h>
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
 #include <sawNDITracker/sawNDITrackerExport.h>  // always include last
@@ -165,6 +163,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     cmnNamedMap<Tool> PortToTool;
 
     mtsBool IsTracking;
+    mtsMatrix<double> StrayMarkers;
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsNDISerial);
