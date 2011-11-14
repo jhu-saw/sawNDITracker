@@ -25,7 +25,7 @@ if (cisst_FOUND)
   include (${CISST_USE_FILE})
 
   # sawNDITracker has been compiled within cisst, we should find it automatically
-  find_package (sawNDITracker REQUIRED HINTS "${CISST_BINARY_DIR}/saw/components")
+  find_package (sawNDITracker REQUIRED HINTS "${cisst_saw_BINARY_DIR}/saw/components")
 
   if (sawNDITracker_FOUND)
 
