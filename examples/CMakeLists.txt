@@ -14,7 +14,7 @@
 # create a list of libraries needed for this project
 set (REQUIRED_CISST_LIBRARIES cisstCommon cisstCommonQt cisstCommonXML
                               cisstVector cisstOSAbstraction cisstNumerical
-                              cisstMultiTask cisstParameterTypes cisstRobot)
+                              cisstMultiTask cisstParameterTypes)
 
 # find cisst and make sure the required libraries have been compiled
 find_package (cisst REQUIRED ${REQUIRED_CISST_LIBRARIES})
