@@ -1,7 +1,7 @@
 #
 # $Id$
 #
-# (C) Copyright 2011 Johns Hopkins University (JHU), All Rights
+# (C) Copyright 2011-2012 Johns Hopkins University (JHU), All Rights
 # Reserved.
 #
 # --- begin cisst license - do not edit ---
@@ -32,7 +32,7 @@ if (cisst_FOUND_AS_REQUIRED)
                ../sawNDITrackerExport.h
                mtsNDISerial.cpp
                ../mtsNDISerial.h)
-
+  set_property (TARGET sawNDITracker PROPERTY FOLDER "sawNDITracker")
   cisst_target_link_libraries (sawNDITracker ${REQUIRED_CISST_LIBRARIES})
 
   # Qt widgets
@@ -74,7 +74,7 @@ if (cisst_FOUND_AS_REQUIRED)
                  ../mtsNDISerialControllerQtComponent.h
                  mtsNDISerialToolQtComponent.cpp
                  ../mtsNDISerialToolQtComponent.h)
-
+    set_property (TARGET sawNDITrackerQt PROPERTY FOLDER "sawNDITracker")
     target_link_libraries (sawNDITrackerQt ${QT_LIBRARIES})
     cisst_target_link_libraries (sawNDITrackerQt ${REQUIRED_CISST_LIBRARIES} cisstQt)
   endif (CISST_HAS_QT)
