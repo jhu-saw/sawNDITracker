@@ -61,7 +61,8 @@ int main(int argc, char *argv[])
     mtsNDISerialControllerQtComponent * componentControllerQtComponent = new mtsNDISerialControllerQtComponent("componentControllerQtComponent");
 
     // configure the components
-    cmnPath searchPath = std::string(CISST_SOURCE_ROOT) + "/saw/components/sawNDITracker/examples";
+    cmnPath searchPath;
+    searchPath.Add(cmnPath::GetWorkingDirectory());
     componentNDISerial->Configure(searchPath.Find("config.xml"));
 
     // add the components to the component manager

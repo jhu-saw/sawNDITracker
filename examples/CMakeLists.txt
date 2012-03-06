@@ -41,7 +41,17 @@ if (cisst_FOUND)
                            ${sawNDITracker_LIBRARIES}
                            ${sawNDITrackerQt_LIBRARIES}
                            ${QT_LIBRARIES}
-                         )
+                           )
+
+    # Copy the Python example to the binary tree
+    add_custom_command (TARGET sawNDITrackerQtExample
+                        POST_BUILD
+                        COMMAND ${CMAKE_COMMAND}
+                        ARGS -E copy
+                             ${CMAKE_CURRENT_SOURCE_DIR}/config.xml
+                             ${EXECUTABLE_OUTPUT_PATH}/${CMAKE_CFG_INTDIR}/config.xml
+                        COMMENT "sawNDITrackerQtExample: copy config.xml to the executable directory")
+
     # link against cisst libraries (and dependencies)
     cisst_target_link_libraries (sawNDITrackerQtExample ${REQUIRED_CISST_LIBRARIES})
 
