@@ -1,7 +1,7 @@
 #
 # $Id$
 #
-# (C) Copyright 2011 Johns Hopkins University (JHU), All Rights
+# (C) Copyright 2011-2012 Johns Hopkins University (JHU), All Rights
 # Reserved.
 #
 # --- begin cisst license - do not edit ---
@@ -12,5 +12,6 @@
 #
 # --- end cisst license ---
 
+project (sawNDITracker)
 add_subdirectory (code)
 add_subdirectory (examples)

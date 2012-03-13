@@ -28,15 +28,26 @@ if (cisst_FOUND_AS_REQUIRED)
   # load cisst configuration
   include (${CISST_USE_FILE})
 
+  # create/configure file for find_package (sawNDITracker)
+  set (sawNDITracker_INCLUDE_DIR "${sawNDITracker_SOURCE_DIR}/include" "${sawNDITracker_BINARY_DIR}")
+  set (sawNDITracker_LIBRARY_DIR "${LIBRARY_OUTPUT_PATH}")
+  set (sawNDITracker_LIBRARIES sawNDITracker)
+  set (sawNDITrackerQt_LIBRARIES sawNDITrackerQt)
+
+  include_directories (${sawNDITracker_INCLUDE_DIR} ${sawNDITracker_BINARY_DIR})
+  set (sawNDITracker_HEADER_DIR "${sawNDITracker_SOURCE_DIR}/include/sawNDITracker")
+
   add_library (sawNDITracker
-               ../sawNDITrackerExport.h
+               ${sawNDITracker_HEADER_DIR}/sawNDITrackerExport.h
                mtsNDISerial.cpp
-               ../mtsNDISerial.h)
+               ${sawNDITracker_HEADER_DIR}/mtsNDISerial.h)
   set_property (TARGET sawNDITracker PROPERTY FOLDER "sawNDITracker")
   cisst_target_link_libraries (sawNDITracker ${REQUIRED_CISST_LIBRARIES})
 
   # Qt widgets
   if (CISST_HAS_QT)
+
+    file (MAKE_DIRECTORY "${sawNDITracker_BINARY_DIR}/sawNDITracker")
 
     # this needs to be moved to cisstMacros.cmake
     MACRO (CISST_QT4_WRAP_UI outfiles)
@@ -45,7 +56,7 @@ if (cisst_FOUND_AS_REQUIRED)
         GET_FILENAME_COMPONENT (outfile ${it} NAME_WE)
         GET_FILENAME_COMPONENT (infile ${it} ABSOLUTE)
         # the only thing we modified ...
-        SET (outfile ${sawComponents_BINARY_DIR}/sawNDITracker/${outfile}.h)
+        SET (outfile ${sawNDITracker_BINARY_DIR}/sawNDITracker/${outfile}.h)
         ADD_CUSTOM_COMMAND (OUTPUT ${outfile}
                             COMMAND ${QT_UIC_EXECUTABLE}
                             ARGS ${ui_options} -o ${outfile} ${infile}
@@ -60,8 +71,8 @@ if (cisst_FOUND_AS_REQUIRED)
     # for Qt generated header files
     include_directories (${CMAKE_CURRENT_BINARY_DIR})
     qt4_wrap_cpp (SAW_NDISERIAL_QT_COMPONENTS_GENERATED
-                  ../mtsNDISerialControllerQtComponent.h
-                  ../mtsNDISerialToolQtComponent.h)
+                  ${sawNDITracker_HEADER_DIR}/mtsNDISerialControllerQtComponent.h
+                  ${sawNDITracker_HEADER_DIR}/mtsNDISerialToolQtComponent.h)
     cisst_qt4_wrap_ui (SAW_NDISERIAL_QT_WIDGETS_GENERATED
                        mtsNDISerialControllerQtWidget.ui
                        mtsNDISerialToolQtWidget.ui)
@@ -69,25 +80,33 @@ if (cisst_FOUND_AS_REQUIRED)
     add_library (sawNDITrackerQt
                  ${SAW_NDISERIAL_QT_COMPONENTS_GENERATED}
                  ${SAW_NDISERIAL_QT_WIDGETS_GENERATED}
-                 ../sawNDITrackerExportQt.h
+                 ${sawNDITracker_HEADER_DIR}/sawNDITrackerExportQt.h
                  mtsNDISerialControllerQtComponent.cpp
-                 ../mtsNDISerialControllerQtComponent.h
+                 ${sawNDITracker_HEADER_DIR}/mtsNDISerialControllerQtComponent.h
                  mtsNDISerialToolQtComponent.cpp
-                 ../mtsNDISerialToolQtComponent.h)
+                 ${sawNDITracker_HEADER_DIR}/mtsNDISerialToolQtComponent.h)
     set_property (TARGET sawNDITrackerQt PROPERTY FOLDER "sawNDITracker")
     target_link_libraries (sawNDITrackerQt ${QT_LIBRARIES})
     cisst_target_link_libraries (sawNDITrackerQt ${REQUIRED_CISST_LIBRARIES} cisstQt)
   endif (CISST_HAS_QT)
 
-  # create/configure file for find_package (sawNDITracker)
-  set (sawNDITracker_INCLUDE_DIR "${sawComponents_SOURCE_DIR}" "${sawComponents_BINARY_DIR}")
-  set (sawNDITracker_LIBRARY_DIR "${LIBRARY_OUTPUT_PATH}")
-  set (sawNDITracker_LIBRARIES sawNDITracker)
-  set (sawNDITrackerQt_LIBRARIES sawNDITrackerQt)
-
   configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/sawNDITrackerConfig.cmake.in"
-                  "${sawComponents_BINARY_DIR}/sawNDITrackerConfig.cmake"
+                  "${sawNDITracker_BINARY_DIR}/sawNDITrackerConfig.cmake"
                    @ONLY@)
+
+  # Install target for headers and library
+  install (DIRECTORY
+           "${sawNDITracker_SOURCE_DIR}/include/sawNDITracker"
+           DESTINATION include
+           PATTERN .svn EXCLUDE)
+
+  install (TARGETS sawNDITracker
+           RUNTIME DESTINATION bin
+           LIBRARY DESTINATION lib
+           ARCHIVE DESTINATION lib)
+
+  install (FILES "${sawNDITracker_BINARY_DIR}/sawNDITrackerConfig.cmake"
+           DESTINATION "${CISST_CMAKE_INSTALL_SUFFIX}/saw")
 
 else (cisst_FOUND_AS_REQUIRED)
   message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires ${REQUIRED_CISST_LIBRARIES}")
