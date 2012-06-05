@@ -42,16 +42,9 @@ int main(int argc, char *argv[])
     // log configuration
     cmnLogger::SetMask(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskFunction(CMN_LOG_ALLOW_ALL);
+    cmnLogger::SetMaskDefaultLog(CMN_LOG_ALLOW_ALL);
+    cmnLogger::SetMaskClassMatching("mtsNDISerial", CMN_LOG_ALLOW_ALL);
     cmnLogger::AddChannel(std::cout, CMN_LOG_ALLOW_ERRORS | CMN_LOG_ALLOW_WARNINGS);
-
-    // add a log per thread
-    osaThreadedLogFile threadedLog("mtsNDISerialQtExample-");
-    cmnLogger::AddChannel(threadedLog, CMN_LOG_ALLOW_ALL);
-
-    // set the log level of detail on select components
-    cmnLogger::SetMaskClass("mtsNDISerial", CMN_LOG_ALLOW_ALL);
-    cmnLogger::SetMaskClass("mtsNDISerialControllerQtComponent", CMN_LOG_ALLOW_ALL);
-    cmnLogger::SetMaskClass("mtsNDISerialToolQtComponent", CMN_LOG_ALLOW_ALL);
 
     // create a Qt user interface
     QApplication application(argc, argv);
