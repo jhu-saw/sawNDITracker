@@ -11,10 +11,13 @@
 #
 # --- end cisst license ---
 
-# create a list of libraries needed for this project
+# create a list of required cisst libraries
 set (REQUIRED_CISST_LIBRARIES cisstCommon cisstCommonQt cisstCommonXML
-                              cisstVector cisstOSAbstraction cisstNumerical
-                              cisstMultiTask cisstParameterTypes)
+                              cisstVector
+                              cisstNumerical
+                              cisstOSAbstraction
+                              cisstMultiTask
+                              cisstParameterTypes)
 
 # find cisst and make sure the required libraries have been compiled
 find_package (cisst REQUIRED ${REQUIRED_CISST_LIBRARIES})
@@ -43,14 +46,14 @@ if (cisst_FOUND)
                            ${QT_LIBRARIES}
                            )
 
-    # Copy the Python example to the binary tree
+    # copy configuration XML to the executable directory
     add_custom_command (TARGET sawNDITrackerQtExample
                         POST_BUILD
                         COMMAND ${CMAKE_COMMAND}
                         ARGS -E copy
-                             ${CMAKE_CURRENT_SOURCE_DIR}/config.xml
-                             ${EXECUTABLE_OUTPUT_PATH}/${CMAKE_CFG_INTDIR}/config.xml
-                        COMMENT "sawNDITrackerQtExample: copy config.xml to the executable directory")
+                             ${CMAKE_CURRENT_SOURCE_DIR}/configNDITracker.xml
+                             ${EXECUTABLE_OUTPUT_PATH}/${CMAKE_CFG_INTDIR}/configNDITracker.xml
+                        COMMENT "sawNDITrackerQtExample: copy configuration XML to the executable directory")
 
     # link against cisst libraries (and dependencies)
     cisst_target_link_libraries (sawNDITrackerQtExample ${REQUIRED_CISST_LIBRARIES})

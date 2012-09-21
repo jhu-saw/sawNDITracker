@@ -12,7 +12,7 @@
 #
 # --- end cisst license ---
 
-# Core library
+# create a list of required cisst libraries
 set (REQUIRED_CISST_LIBRARIES cisstCommon
                               cisstCommonXML
                               cisstVector

@@ -7,7 +7,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2011 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -28,4 +28,3 @@ http://www.cisst.org/cisst/license.txt.
 
 // avoid impact on other modules
 #undef CISST_THIS_LIBRARY_AS_DLL
-
