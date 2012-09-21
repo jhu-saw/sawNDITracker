@@ -7,7 +7,7 @@
   Author(s):  Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2011 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -37,14 +37,14 @@ http://www.cisst.org/cisst/license.txt.
 #include <QMainWindow>
 
 
-int main(int argc, char *argv[])
+int main(int argc, char * argv[])
 {
     // log configuration
     cmnLogger::SetMask(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskFunction(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskDefaultLog(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskClassMatching("mtsNDISerial", CMN_LOG_ALLOW_ALL);
-    cmnLogger::AddChannel(std::cout, CMN_LOG_ALLOW_ERRORS | CMN_LOG_ALLOW_WARNINGS);
+    cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
     // create a Qt user interface
     QApplication application(argc, argv);
@@ -56,7 +56,12 @@ int main(int argc, char *argv[])
     // configure the components
     cmnPath searchPath;
     searchPath.Add(cmnPath::GetWorkingDirectory());
-    componentNDISerial->Configure(searchPath.Find("config.xml"));
+    std::string configPath = searchPath.Find("configNDITracker.xml");
+	if (configPath.empty()) {
+		std::cerr << "Failed to find configuration: " << configPath << std::endl;
+		return 1;
+	}
+    componentNDISerial->Configure(configPath);
 
     // add the components to the component manager
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
@@ -77,7 +82,8 @@ int main(int argc, char *argv[])
     for (unsigned int i = 0; i < componentNDISerial->GetNumberOfTools(); i++) {
         std::string toolName = componentNDISerial->GetToolName(i);
         mtsNDISerialToolQtComponent * componentToolQtComponent = new mtsNDISerialToolQtComponent(toolName);
-        componentControllerQtComponent->AddToolWidget(componentToolQtComponent->GetWidget());
+        componentControllerQtComponent->AddTool(componentToolQtComponent,
+                                                componentToolQtComponent->GetWidget());
         componentManager->AddComponent(componentToolQtComponent);
         componentManager->Connect(toolName, toolName,
                                   componentNDISerial->GetName(), toolName);

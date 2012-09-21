@@ -7,7 +7,7 @@
   Author(s):  Ali Uneri
   Created on: 2009-10-27
 
-  (C) Copyright 2009-2011 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -42,12 +42,10 @@ mtsNDISerialToolQtComponent::mtsNDISerialToolQtComponent(const std::string & tas
     // connect Qt signals to slots
     QObject::connect(ToolWidget.ButtonRecord, SIGNAL(clicked()),
                      this, SLOT(RecordQSlot()));
-
-    startTimer(20);
 }
 
 
-void mtsNDISerialToolQtComponent::timerEvent(QTimerEvent * CMN_UNUSED(event))
+void mtsNDISerialToolQtComponent::UpdatePositionCartesian(void)
 {
     NDI.GetPositionCartesian(NDI.PositionCartesian);
     if (NDI.PositionCartesian.Valid()) {
@@ -72,7 +70,4 @@ void mtsNDISerialToolQtComponent::RecordQSlot(void)
          << NDI.PositionCartesian.Position().Translation().Y() << ", "
          << NDI.PositionCartesian.Position().Translation().Z() << std::endl;
     file.close();
-
-    CMN_LOG_CLASS_RUN_VERBOSE << "RecordQSlot: point collected" << std::endl;
-    qApp->beep();
 }

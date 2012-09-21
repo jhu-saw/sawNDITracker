@@ -7,7 +7,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2011 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -30,21 +30,22 @@ http://www.cisst.org/cisst/license.txt.
 #endif
 #include <sawNDITracker/mtsNDISerial.h>
 
-CMN_IMPLEMENT_SERVICES(mtsNDISerial);
+CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsNDISerial, mtsTaskPeriodic, mtsTaskPeriodicConstructorArg);
 
 
-mtsNDISerial::mtsNDISerial(const std::string & taskName, const double period) :
-    mtsTaskPeriodic(taskName, period, false, 5000),
-    IsTracking(false)
+void mtsNDISerial::Configure(const std::string & filename)
 {
+    IsTracking = false;
     StrayMarkers.SetSize(50, 5);
     StrayMarkers.Zeros();
+    memset(SerialBuffer, 0, MAX_BUFFER_SIZE);
+    SerialBufferPointer = SerialBuffer;
+
+    StateTable.AddData(IsTracking, "IsTracking");
+    StateTable.AddData(StrayMarkers, "StrayMarkers");
 
     mtsInterfaceProvided * provided = AddInterfaceProvided("Controller");
     if (provided) {
-        StateTable.AddData(IsTracking, "IsTracking");
-        StateTable.AddData(StrayMarkers, "StrayMarkers");
-
         provided->AddCommandWrite(&mtsNDISerial::Beep, this, "Beep", mtsInt());
         provided->AddCommandVoid(&mtsNDISerial::PortHandlesInitialize, this, "PortHandlesInitialize");
         provided->AddCommandVoid(&mtsNDISerial::PortHandlesQuery, this, "PortHandlesQuery");
@@ -55,15 +56,7 @@ mtsNDISerial::mtsNDISerial(const std::string & taskName, const double period) :
         provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
     }
 
-    memset(SerialBuffer, 0, MAX_BUFFER_SIZE);
-    SerialBufferPointer = SerialBuffer;
-}
-
-
-void mtsNDISerial::Configure(const std::string & filename)
-{
     CMN_LOG_CLASS_INIT_VERBOSE << "Configure: using " << filename << std::endl;
-
     cmnXMLPath config;
     config.SetInputSource(filename);
 

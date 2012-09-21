@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<tracker>
+
+  <controller port="COM1"
+              definitions="C:\NDIToolDefinitions\" />
+
+  <tools>
+
+    <tool name="Pointer"
+          serial="34802401"
+          definition="8700340.rom">
+      <tooltip rotation="1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0"
+               translation="-17.99, 0.69, -159.60" />
+    </tool>
+
+    <tool name="Reference"
+          serial="34801403"
+          definition="8700339.rom">
+      <tooltip rotation="1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0"
+               translation="0.0, 0.0, 0.0" />
+    </tool>
+  </tools>
+</tracker>

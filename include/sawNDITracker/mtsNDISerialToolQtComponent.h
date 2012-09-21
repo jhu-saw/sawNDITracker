@@ -7,7 +7,7 @@
   Author(s):  Ali Uneri
   Created on: 2009-10-27
 
-  (C) Copyright 2009-2011 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -54,7 +54,7 @@ class CISST_EXPORT mtsNDISerialToolQtComponent : public QObject, public mtsCompo
     } NDI;
 
  public slots:
-    void timerEvent(QTimerEvent * event);
+    void UpdatePositionCartesian(void);
     void RecordQSlot(void);
 };
 

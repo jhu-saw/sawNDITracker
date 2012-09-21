@@ -7,7 +7,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2011 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -57,7 +57,7 @@ http://www.cisst.org/cisst/license.txt.
 
 class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
 {
-    CMN_DECLARE_SERVICES(CMN_NO_DYNAMIC_CREATION, CMN_LOG_ALLOW_DEFAULT);
+    CMN_DECLARE_SERVICES(CMN_DYNAMIC_CREATION_ONEARG, CMN_LOG_ALLOW_DEFAULT);
 
  protected:
     class Tool
@@ -86,7 +86,10 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     };
 
  public:
-    mtsNDISerial(const std::string & taskName, const double period);
+    mtsNDISerial(const std::string & taskName, const double period) :
+        mtsTaskPeriodic(taskName, period, false, 5000) {}
+    mtsNDISerial(const mtsTaskPeriodicConstructorArg & arg) :
+        mtsTaskPeriodic(arg) {}
     ~mtsNDISerial(void) {};
 
     void Configure(const std::string & filename = "");
@@ -168,4 +171,4 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsNDISerial);
 
-#endif  //_mtsNDISerial_h
+#endif  // _mtsNDISerial_h

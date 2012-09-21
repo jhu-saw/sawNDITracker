@@ -7,7 +7,7 @@
   Author(s):  Ali Uneri
   Created on: 2009-10-29
 
-  (C) Copyright 2009-2011 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -29,6 +29,7 @@ mtsNDISerialControllerQtComponent::mtsNDISerialControllerQtComponent(const std::
 {
     ControllerWidget.setupUi(&CentralWidget);
     CentralWidget.setWindowTitle(QString::fromStdString(taskName));
+    Timer = new QTimer(this);
 
     mtsInterfaceRequired * required = AddInterfaceRequired("Controller");
     if (required) {
@@ -63,10 +64,12 @@ mtsNDISerialControllerQtComponent::mtsNDISerialControllerQtComponent(const std::
 }
 
 
-void mtsNDISerialControllerQtComponent::AddToolWidget(QWidget * toolWidget)
+void mtsNDISerialControllerQtComponent::AddTool(QObject * toolQtComponent, QWidget * toolQtWidget)
 {
-    ControllerWidget.LayoutTools->addWidget(toolWidget);
-    ControllerWidget.BoxTools->addItem(toolWidget->windowTitle());
+    ControllerWidget.LayoutTools->addWidget(toolQtWidget);
+    ControllerWidget.BoxTools->addItem(toolQtWidget->windowTitle());
+    QObject::connect(this->Timer, SIGNAL(timeout()),
+                     toolQtComponent, SLOT(UpdatePositionCartesian()));
 }
 
 
@@ -82,7 +85,6 @@ void mtsNDISerialControllerQtComponent::NDIInitializeQSlot(void)
     NDI.Initialize();
     NDI.Query();
     NDI.Enable();
-    qApp->beep();
 }
 
 
@@ -96,7 +98,11 @@ void mtsNDISerialControllerQtComponent::NDICalibratePivotQSlot(void)
 void mtsNDISerialControllerQtComponent::NDITrackQSlot(bool toggled)
 {
     NDI.Track(mtsBool(toggled));
-    qApp->beep();
+    if (toggled) {
+        Timer->start(20);
+    } else {
+        Timer->stop();
+    }
 }
 
 
@@ -109,10 +115,8 @@ void mtsNDISerialControllerQtComponent::NDIReportStrayMarkersQSlot(void)
 void mtsNDISerialControllerQtComponent::RecordQSlot(bool toggled)
 {
     if (toggled) {
-        CMN_LOG_CLASS_RUN_VERBOSE << "RecordQSlot: starting data collection" << std::endl;
         Collector.Start();
     } else {
-        CMN_LOG_CLASS_RUN_VERBOSE << "RecordQSlot: stopping data collection" << std::endl;
         Collector.Stop();
     }
 }

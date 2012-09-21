@@ -7,7 +7,7 @@
   Author(s):  Ali Uneri
   Created on: 2009-10-29
 
-  (C) Copyright 2009-2011 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -20,6 +20,8 @@ http://www.cisst.org/cisst/license.txt.
 
 #ifndef _mtsNDISerialControllerQtComponent_h
 #define _mtsNDISerialControllerQtComponent_h
+
+#include <QTimer>
 
 #include <cisstMultiTask/mtsComponent.h>
 #include <cisstMultiTask/mtsFunctionRead.h>
@@ -40,7 +42,7 @@ class CISST_EXPORT mtsNDISerialControllerQtComponent : public QObject, public mt
 
     void Configure(const std::string & CMN_UNUSED(filename) = "") {};
 
-    void AddToolWidget(QWidget * toolWidget);
+    void AddTool(QObject * toolQtComponent, QWidget * toolQtWidget);
 
     QWidget * GetWidget(void) {
         return &CentralWidget;
@@ -49,6 +51,7 @@ class CISST_EXPORT mtsNDISerialControllerQtComponent : public QObject, public mt
  protected:
     Ui::mtsNDISerialControllerQtWidget ControllerWidget;
     QWidget CentralWidget;
+    QTimer * Timer;
 
     struct {
         mtsFunctionWrite Beep;
