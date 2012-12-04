@@ -102,6 +102,10 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     }
     std::string GetToolName(const unsigned int index) const;
 
+    void PortHandlesInitialize(void);
+    void PortHandlesQuery(void);
+    void PortHandlesEnable(void);
+
  protected:
     enum { MAX_BUFFER_SIZE = 512 };
     enum { CRC_SIZE = 4 };
@@ -148,9 +152,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     Tool * AddTool(const std::string & name, const char * serialNumber);
     Tool * AddTool(const std::string & name, const char * serialNumber, const char * toolDefinitionFile);
 
-    void PortHandlesInitialize(void);
-    void PortHandlesQuery(void);
-    void PortHandlesEnable(void);
+
 
     void ToggleTracking(const mtsBool & track);
     void Track(void);

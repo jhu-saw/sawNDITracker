@@ -88,12 +88,18 @@ void mtsNDISerial::Configure(const std::string & filename)
 
     // add tools
     int maxNumTools = 100;
+
+    int toolCount = 0;
+
+    config.Query("count(/tracker/tools/*)",toolCount);
+    int maxToolCount = static_cast<int>(std::min(toolCount,maxNumTools));
+
     std::string toolName, toolSerial, toolSerialLast, toolDefinition;
     Tool * tool;
 
-    for (int i = 0; i < maxNumTools; i++) {
+    for (int i = 0; i < maxToolCount; i++) {
         std::stringstream context;
-        context << "/tracker/tools/tool[" << i << "]";
+        context << "/tracker/tools/tool[" << i+1 << "]"; /// \todo(dmirota) XML is one-based.  Adding one here.
         config.GetXMLValue(context.str().c_str(), "@name", toolName, "");
         if (toolName.empty()) {
             continue;
