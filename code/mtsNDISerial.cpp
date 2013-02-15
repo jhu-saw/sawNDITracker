@@ -625,6 +625,16 @@ void mtsNDISerial::PortHandlesQuery(void)
         sscanf(SerialBuffer, "%2c%*1X%*1X%*2c%*2c%*12c%*3c%8c%*2c%*20c",
                mainType, serialNumber);
 
+        /// \todo This is a workaround for an issue using the USB port on the latest Aurora
+        if(strncmp(serialNumber,"00000000",8) == 0){
+            CMN_LOG_CLASS_INIT_DEBUG << "PortHandlesQuery: received serial number of all zeros.  Skipping this tool and trying again" << std::endl;
+            osaSleep(0.5 * cmn_s);
+            PortHandlesInitialize();
+            PortHandlesQuery();
+            return;
+
+        }
+
         // check if tool exists, generate a name and add it otherwise
         tool = CheckTool(serialNumber);
         if (!tool) {
