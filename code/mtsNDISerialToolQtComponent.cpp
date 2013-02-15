@@ -52,10 +52,17 @@ void mtsNDISerialToolQtComponent::UpdatePositionCartesian(void)
         ToolWidget.PositionX->setNum(NDI.PositionCartesian.Position().Translation().X());
         ToolWidget.PositionY->setNum(NDI.PositionCartesian.Position().Translation().Y());
         ToolWidget.PositionZ->setNum(NDI.PositionCartesian.Position().Translation().Z());
+        ToolWidget.PositionX->setStyleSheet("background-color : #00FF00;");
+        ToolWidget.PositionY->setStyleSheet("background-color : #00FF00;");
+        ToolWidget.PositionZ->setStyleSheet("background-color : #00FF00;");
+
     } else {
         ToolWidget.PositionX->setNum(0.0);
         ToolWidget.PositionY->setNum(0.0);
         ToolWidget.PositionZ->setNum(0.0);
+        ToolWidget.PositionX->setStyleSheet("background-color : red;");
+        ToolWidget.PositionY->setStyleSheet("background-color : red;");
+        ToolWidget.PositionZ->setStyleSheet("background-color : red;");
     }
 }
 
