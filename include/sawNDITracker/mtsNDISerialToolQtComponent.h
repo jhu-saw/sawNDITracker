@@ -6,7 +6,7 @@
   Author(s):  Ali Uneri
   Created on: 2009-10-27
 
-  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2014 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -17,16 +17,21 @@ http://www.cisst.org/cisst/license.txt.
 --- end cisst license ---
 */
 
-#ifndef _mtsToolQtComponent_h
+#ifndef _mtsNDISerialToolQtComponent_h
 #define _mtsNDISerialToolQtComponent_h
+
+#include <QObject>
+#include <QWidget>
 
 #include <cisstMultiTask/mtsComponent.h>
 #include <cisstMultiTask/mtsFunctionRead.h>
 #include <cisstMultiTask/mtsFunctionWrite.h>
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
-#include <sawNDITracker/mtsNDISerialToolQtWidget.h>
 #include <sawNDITracker/sawNDITrackerExportQt.h>  // always include last
 
+namespace Ui {
+    class mtsNDISerialToolQtWidget;
+}
 
 class CISST_EXPORT mtsNDISerialToolQtComponent : public QObject, public mtsComponent
 {
@@ -44,7 +49,7 @@ class CISST_EXPORT mtsNDISerialToolQtComponent : public QObject, public mtsCompo
     }
 
  protected:
-    Ui::mtsNDISerialToolQtWidget ToolWidget;
+    Ui::mtsNDISerialToolQtWidget * ToolWidget;
     QWidget CentralWidget;
 
     struct {

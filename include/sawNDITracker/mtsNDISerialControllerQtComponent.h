@@ -21,14 +21,17 @@ http://www.cisst.org/cisst/license.txt.
 #define _mtsNDISerialControllerQtComponent_h
 
 #include <QTimer>
+#include <QWidget>
 
 #include <cisstMultiTask/mtsComponent.h>
 #include <cisstMultiTask/mtsFunctionRead.h>
 #include <cisstMultiTask/mtsFunctionWrite.h>
 #include <cisstMultiTask/mtsFunctionVoid.h>
-#include <sawNDITracker/mtsNDISerialControllerQtWidget.h>
 #include <sawNDITracker/sawNDITrackerExportQt.h>  // always include last
 
+namespace Ui {
+    class mtsNDISerialControllerQtWidget;
+}
 
 class CISST_EXPORT mtsNDISerialControllerQtComponent : public QObject, public mtsComponent
 {
@@ -48,7 +51,7 @@ class CISST_EXPORT mtsNDISerialControllerQtComponent : public QObject, public mt
     }
 
  protected:
-    Ui::mtsNDISerialControllerQtWidget ControllerWidget;
+    Ui::mtsNDISerialControllerQtWidget * ControllerWidget;
     QWidget CentralWidget;
     QTimer * Timer;
 

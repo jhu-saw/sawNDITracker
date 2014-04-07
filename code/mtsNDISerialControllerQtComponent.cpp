@@ -6,7 +6,7 @@
   Author(s):  Ali Uneri
   Created on: 2009-10-29
 
-  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2014 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -19,6 +19,7 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisstMultiTask/mtsInterfaceRequired.h>
 #include <sawNDITracker/mtsNDISerialControllerQtComponent.h>
+#include <ui_mtsNDISerialControllerQtWidget.h>
 
 CMN_IMPLEMENT_SERVICES(mtsNDISerialControllerQtComponent);
 
@@ -26,7 +27,8 @@ CMN_IMPLEMENT_SERVICES(mtsNDISerialControllerQtComponent);
 mtsNDISerialControllerQtComponent::mtsNDISerialControllerQtComponent(const std::string & taskName) :
     mtsComponent(taskName)
 {
-    ControllerWidget.setupUi(&CentralWidget);
+    ControllerWidget = new Ui::mtsNDISerialControllerQtWidget();
+    ControllerWidget->setupUi(&CentralWidget);
     CentralWidget.setWindowTitle(QString::fromStdString(taskName));
     Timer = new QTimer(this);
 
@@ -48,25 +50,25 @@ mtsNDISerialControllerQtComponent::mtsNDISerialControllerQtComponent(const std::
     }
 
     // connect Qt signals to slots
-    QObject::connect(ControllerWidget.ButtonBeep, SIGNAL(clicked()),
+    QObject::connect(ControllerWidget->ButtonBeep, SIGNAL(clicked()),
                      this, SLOT(NDIBeepQSlot()));
-    QObject::connect(ControllerWidget.ButtonInitialize, SIGNAL(clicked()),
+    QObject::connect(ControllerWidget->ButtonInitialize, SIGNAL(clicked()),
                      this, SLOT(NDIInitializeQSlot()));
-    QObject::connect(ControllerWidget.ButtonCalibratePivot, SIGNAL(clicked()),
+    QObject::connect(ControllerWidget->ButtonCalibratePivot, SIGNAL(clicked()),
                      this, SLOT(NDICalibratePivotQSlot()));
-    QObject::connect(ControllerWidget.ButtonTrack, SIGNAL(toggled(bool)),
+    QObject::connect(ControllerWidget->ButtonTrack, SIGNAL(toggled(bool)),
                      this, SLOT(NDITrackQSlot(bool)));
-    QObject::connect(ControllerWidget.ButtonReportStrayMarkers, SIGNAL(clicked()),
+    QObject::connect(ControllerWidget->ButtonReportStrayMarkers, SIGNAL(clicked()),
                      this, SLOT(NDIReportStrayMarkersQSlot()));
-    QObject::connect(ControllerWidget.ButtonRecord, SIGNAL(toggled(bool)),
+    QObject::connect(ControllerWidget->ButtonRecord, SIGNAL(toggled(bool)),
                      this, SLOT(RecordQSlot(bool)));
 }
 
 
 void mtsNDISerialControllerQtComponent::AddTool(QObject * toolQtComponent, QWidget * toolQtWidget)
 {
-    ControllerWidget.LayoutTools->addWidget(toolQtWidget);
-    ControllerWidget.BoxTools->addItem(toolQtWidget->windowTitle());
+    ControllerWidget->LayoutTools->addWidget(toolQtWidget);
+    ControllerWidget->BoxTools->addItem(toolQtWidget->windowTitle());
     QObject::connect(this->Timer, SIGNAL(timeout()),
                      toolQtComponent, SLOT(UpdatePositionCartesian()));
 }
@@ -74,7 +76,7 @@ void mtsNDISerialControllerQtComponent::AddTool(QObject * toolQtComponent, QWidg
 
 void mtsNDISerialControllerQtComponent::NDIBeepQSlot(void)
 {
-    mtsInt numberOfBeeps = ControllerWidget.NumberOfBeeps->value();
+    mtsInt numberOfBeeps = ControllerWidget->NumberOfBeeps->value();
     NDI.Beep(numberOfBeeps);
 }
 
@@ -89,7 +91,7 @@ void mtsNDISerialControllerQtComponent::NDIInitializeQSlot(void)
 
 void mtsNDISerialControllerQtComponent::NDICalibratePivotQSlot(void)
 {
-    mtsStdString toolName = ControllerWidget.BoxTools->currentText().toStdString();
+    mtsStdString toolName = ControllerWidget->BoxTools->currentText().toStdString();
     NDI.CalibratePivot(toolName);
 }
 

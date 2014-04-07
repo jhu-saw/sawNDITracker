@@ -6,7 +6,7 @@
   Author(s):  Ali Uneri
   Created on: 2009-10-27
 
-  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2014 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -19,6 +19,7 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisstMultiTask/mtsInterfaceRequired.h>
 #include <sawNDITracker/mtsNDISerialToolQtComponent.h>
+#include <ui_mtsNDISerialToolQtWidget.h>
 
 #include <QDir>
 #include <QString>
@@ -29,8 +30,8 @@ CMN_IMPLEMENT_SERVICES(mtsNDISerialToolQtComponent);
 mtsNDISerialToolQtComponent::mtsNDISerialToolQtComponent(const std::string & taskName) :
     mtsComponent(taskName)
 {
-    ToolWidget.setupUi(&CentralWidget);
-    ToolWidget.ToolGroup->setTitle(QString::fromStdString(taskName));
+    ToolWidget->setupUi(&CentralWidget);
+    ToolWidget->ToolGroup->setTitle(QString::fromStdString(taskName));
     CentralWidget.setWindowTitle(QString::fromStdString(taskName));
 
     mtsInterfaceRequired * required = AddInterfaceRequired(taskName);
@@ -39,7 +40,7 @@ mtsNDISerialToolQtComponent::mtsNDISerialToolQtComponent(const std::string & tas
     }
 
     // connect Qt signals to slots
-    QObject::connect(ToolWidget.ButtonRecord, SIGNAL(clicked()),
+    QObject::connect(ToolWidget->ButtonRecord, SIGNAL(clicked()),
                      this, SLOT(RecordQSlot()));
 }
 
@@ -48,20 +49,20 @@ void mtsNDISerialToolQtComponent::UpdatePositionCartesian(void)
 {
     NDI.GetPositionCartesian(NDI.PositionCartesian);
     if (NDI.PositionCartesian.Valid()) {
-        ToolWidget.PositionX->setNum(NDI.PositionCartesian.Position().Translation().X());
-        ToolWidget.PositionY->setNum(NDI.PositionCartesian.Position().Translation().Y());
-        ToolWidget.PositionZ->setNum(NDI.PositionCartesian.Position().Translation().Z());
-        ToolWidget.PositionX->setStyleSheet("background-color : #00FF00;");
-        ToolWidget.PositionY->setStyleSheet("background-color : #00FF00;");
-        ToolWidget.PositionZ->setStyleSheet("background-color : #00FF00;");
+        ToolWidget->PositionX->setNum(NDI.PositionCartesian.Position().Translation().X());
+        ToolWidget->PositionY->setNum(NDI.PositionCartesian.Position().Translation().Y());
+        ToolWidget->PositionZ->setNum(NDI.PositionCartesian.Position().Translation().Z());
+        ToolWidget->PositionX->setStyleSheet("background-color : #00FF00;");
+        ToolWidget->PositionY->setStyleSheet("background-color : #00FF00;");
+        ToolWidget->PositionZ->setStyleSheet("background-color : #00FF00;");
 
     } else {
-        ToolWidget.PositionX->setNum(0.0);
-        ToolWidget.PositionY->setNum(0.0);
-        ToolWidget.PositionZ->setNum(0.0);
-        ToolWidget.PositionX->setStyleSheet("background-color : red;");
-        ToolWidget.PositionY->setStyleSheet("background-color : red;");
-        ToolWidget.PositionZ->setStyleSheet("background-color : red;");
+        ToolWidget->PositionX->setNum(0.0);
+        ToolWidget->PositionY->setNum(0.0);
+        ToolWidget->PositionZ->setNum(0.0);
+        ToolWidget->PositionX->setStyleSheet("background-color : red;");
+        ToolWidget->PositionY->setStyleSheet("background-color : red;");
+        ToolWidget->PositionZ->setStyleSheet("background-color : red;");
     }
 }
 
