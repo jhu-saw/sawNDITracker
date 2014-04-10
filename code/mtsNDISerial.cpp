@@ -34,6 +34,10 @@ CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsNDISerial, mtsTaskPeriodic, mtsTaskPeri
 
 void mtsNDISerial::Configure(const std::string & filename)
 {
+    // increase the timeout here in case there is so issue with the serial port
+    double timeout = this->ReadTimeout;
+    ReadTimeout = 5.0;
+
     IsTracking = false;
     StrayMarkers.SetSize(50, 5);
     StrayMarkers.Zeros();
@@ -70,6 +74,7 @@ void mtsNDISerial::Configure(const std::string & filename)
     SerialPort.SetPortName(serialPort);
     if (!SerialPort.Open()) {
         CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to open serial port: " << SerialPort.GetPortName() << std::endl;
+        return;
     }
     ResetSerialPort();
     SetSerialPortSettings(osaSerialPort::BaudRate115200,
@@ -125,6 +130,8 @@ void mtsNDISerial::Configure(const std::string & filename)
             }
         }
     }
+
+    this->ReadTimeout = timeout;
 }
 
 
@@ -217,15 +224,26 @@ bool mtsNDISerial::CommandSend(void)
 
 bool mtsNDISerial::ResponseRead(void)
 {
-    SerialBufferPointer = SerialBuffer;
-    do {
-        SerialBufferPointer += SerialPort.Read(SerialBufferPointer, GetSerialBufferAvailableSize());
-    } while (*(SerialBufferPointer - 1) != '\r');
+  ResponseTimer.Reset();
+  ResponseTimer.Start();
 
-    if (!ResponseCheckCRC()) {
-        return false;
-    }
-    return true;
+  SerialBufferPointer = SerialBuffer;
+  do {
+      int bytesRead = SerialPort.Read(SerialBufferPointer, GetSerialBufferAvailableSize());
+      SerialBufferPointer += bytesRead;
+  } while ( (*(SerialBufferPointer - 1) != '\r') && (ResponseTimer.GetElapsedTime() < ReadTimeout) );
+
+  ResponseTimer.Stop();
+
+  if (ResponseTimer.GetElapsedTime() > ReadTimeout) {
+      CMN_LOG_CLASS_RUN_ERROR << "ResponseRead: read command timed out." << std::endl;
+      return false;
+  }
+
+  if (!ResponseCheckCRC()) {
+      return false;
+  }
+  return true;
 }
 
 
@@ -860,7 +878,7 @@ void mtsNDISerial::CalibratePivot(const mtsStdString & toolName)
     double errorSquareSum = 0.0;
     for (unsigned int i = 0; i < numPoints; i++) {
         error = (frames[i] * tooltip) - pivot;
-        CMN_LOG_CLASS_RUN_DEBUG << error << std::endl;
+        CMN_LOG_CLASS_RUN_DEBUG << "CalibratePivot: error " << error << std::endl;
         errorSquareSum += error.NormSquare();
     }
     double errorRMS = sqrt(errorSquareSum / numPoints);

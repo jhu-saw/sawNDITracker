@@ -48,6 +48,7 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisstVector/vctFixedSizeVectorTypes.h>
 #include <cisstOSAbstraction/osaSerialPort.h>
+#include <cisstOSAbstraction/osaStopwatch.h>
 #include <cisstMultiTask/mtsMatrix.h>
 #include <cisstMultiTask/mtsTaskPeriodic.h>
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
@@ -85,10 +86,12 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     };
 
  public:
-    mtsNDISerial(const std::string & taskName, const double period) :
-        mtsTaskPeriodic(taskName, period, false, 5000) {}
-    mtsNDISerial(const mtsTaskPeriodicConstructorArg & arg) :
-        mtsTaskPeriodic(arg) {}
+    mtsNDISerial(const std::string & taskName, const double period):
+        mtsTaskPeriodic(taskName, period, false, 5000),
+        ReadTimeout(100.0 * cmn_ms) {}
+    mtsNDISerial(const mtsTaskPeriodicConstructorArg & arg):
+        mtsTaskPeriodic(arg),
+        ReadTimeout(100.0 * cmn_ms) {}
     ~mtsNDISerial(void) {};
 
     void Configure(const std::string & filename = "");
@@ -168,6 +171,9 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
 
     mtsBool IsTracking;
     mtsMatrix<double> StrayMarkers;
+
+    double ReadTimeout;
+    osaStopwatch ResponseTimer;
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsNDISerial);
