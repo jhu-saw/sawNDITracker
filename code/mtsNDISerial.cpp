@@ -34,10 +34,7 @@ CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsNDISerial, mtsTaskPeriodic, mtsTaskPeri
 
 void mtsNDISerial::Configure(const std::string & filename)
 {
-    // increase the timeout here in case there is so issue with the serial port
-    double timeout = this->ReadTimeout;
-    ReadTimeout = 5.0;
-
+    ReadTimeout = 1.0 * cmn_s;
     IsTracking = false;
     StrayMarkers.SetSize(50, 5);
     StrayMarkers.Zeros();
@@ -130,8 +127,6 @@ void mtsNDISerial::Configure(const std::string & filename)
             }
         }
     }
-
-    this->ReadTimeout = timeout;
 }
 
 

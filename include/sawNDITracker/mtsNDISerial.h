@@ -34,7 +34,6 @@ http://www.cisst.org/cisst/license.txt.
   \todo Every sscanf should check if valid number of items have been read (wrapper for sscanf?).
   \todo Error handling for all strncpy.
   \todo Check for buffer overflow in CommandAppend.
-  \todo Implement a timeout for CheckResponse (integrate Ryan's patch).
   \todo Support for the extra features of newer Polaris versions.
   \todo Pretty print for SerialNumber, to extract date, etc..
   \todo Overload Tool class to have a stream.
@@ -86,12 +85,10 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     };
 
  public:
-    mtsNDISerial(const std::string & taskName, const double period):
-        mtsTaskPeriodic(taskName, period, false, 5000),
-        ReadTimeout(100.0 * cmn_ms) {}
-    mtsNDISerial(const mtsTaskPeriodicConstructorArg & arg):
-        mtsTaskPeriodic(arg),
-        ReadTimeout(100.0 * cmn_ms) {}
+    mtsNDISerial(const std::string & taskName, const double period) :
+        mtsTaskPeriodic(taskName, period, false, 5000) {}
+    mtsNDISerial(const mtsTaskPeriodicConstructorArg & arg) :
+        mtsTaskPeriodic(arg) {}
     ~mtsNDISerial(void) {};
 
     void Configure(const std::string & filename = "");
