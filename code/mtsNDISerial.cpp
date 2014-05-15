@@ -710,14 +710,16 @@ void mtsNDISerial::PortHandlesEnable(void)
             return;
         }
 
-        if (strncmp(tool->MainType, "01", 2) == 0) {
-            CommandAppend("S");
-        } else if (strncmp(tool->MainType, "02", 2) == 0) {
-            CommandAppend("D");
-        } else if (strncmp(tool->MainType, "03", 2) == 0) {
-            CommandAppend("B");
-        } else if (strncmp(tool->MainType, "0A", 2) == 0) {
-            CommandAppend("D");
+        if (strncmp(tool->MainType, "01", 2) == 0) {  // reference
+            CommandAppend("S");  // static
+        } else if (strncmp(tool->MainType, "02", 2) == 0) {  // probe
+            CommandAppend("D");  // dynamic
+        } else if (strncmp(tool->MainType, "03", 2) == 0) {  // button box or foot switch
+            CommandAppend("B");  // button box
+        } else if (strncmp(tool->MainType, "04", 2) == 0) {  // software-defined
+            CommandAppend("D");  // dynamic
+        } else if (strncmp(tool->MainType, "0A", 2) == 0) {  // C-arm tracker
+            CommandAppend("D");  // dynamic
         } else {
             CMN_LOG_CLASS_RUN_ERROR << "PortHandlesEnable: unknown tool of main type: " << tool->MainType << std::endl;
             return;
