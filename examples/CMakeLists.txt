@@ -1,6 +1,7 @@
 #
 #
-# (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights
+# Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -51,7 +52,7 @@ if (cisst_FOUND)
                         COMMAND ${CMAKE_COMMAND}
                         ARGS -E copy
                              ${CMAKE_CURRENT_SOURCE_DIR}/configNDITracker.xml
-                             ${EXECUTABLE_OUTPUT_PATH}/${CMAKE_CFG_INTDIR}/configNDITracker.xml
+                             ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/configNDITracker.xml
                         COMMENT "sawNDITrackerQtExample: copy configuration XML to the executable directory")
 
     # link against cisst libraries (and dependencies)

@@ -96,8 +96,7 @@ if (cisst_FOUND_AS_REQUIRED)
   # Install target for headers and library
   install (DIRECTORY
            "${sawNDITracker_SOURCE_DIR}/include/sawNDITracker"
-           DESTINATION include
-           PATTERN .svn EXCLUDE)
+           DESTINATION include)
 
   install (TARGETS sawNDITracker
            RUNTIME DESTINATION bin
