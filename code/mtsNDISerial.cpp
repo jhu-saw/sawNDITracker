@@ -88,41 +88,38 @@ void mtsNDISerial::Configure(const std::string & filename)
     config.GetXMLValue("/tracker/controller", "@definitions", toolDefinitionsDir, "");
 
     // add tools
-    int maxNumTools = 100;
-
-    int toolCount = 0;
-
-    config.Query("count(/tracker/tools/*)",toolCount);
-    int maxToolCount = static_cast<int>(std::min(toolCount,maxNumTools));
-
-    std::string toolName, toolSerial, toolSerialLast, toolDefinition;
+    int numberOfTools = 0;
+    config.Query("count(/tracker/tools/*)", numberOfTools);
+    std::string toolName, toolSerial, toolDefinition;
     Tool * tool;
 
-    for (int i = 0; i < maxToolCount; i++) {
+    for (int i = 0; i < numberOfTools; i++) {
         std::stringstream context;
-        context << "/tracker/tools/tool[" << i+1 << "]"; /// \todo(dmirota) XML is one-based.  Adding one here.
+        context << "/tracker/tools/tool[" << i+1 << "]";  // XML is one-based, adding one here
         config.GetXMLValue(context.str().c_str(), "@name", toolName, "");
         if (toolName.empty()) {
             continue;
         }
         config.GetXMLValue(context.str().c_str(), "@serial", toolSerial);
         config.GetXMLValue(context.str().c_str(), "@definition", toolDefinition);
-        if (toolSerial != toolSerialLast) {
-            toolSerialLast = toolSerial;
-            if (toolDefinition == "") {
-                tool = AddTool(toolName, toolSerial.c_str());
-            } else {
-                std::string toolDefinitionPath = toolDefinitionsDir + toolDefinition;
-                tool = AddTool(toolName, toolSerial.c_str(), toolDefinitionPath.c_str());
-            }
-            context << "/tooltip";
-            std::string rotation, translation;
-            config.GetXMLValue(context.str().c_str(), "@rotation", rotation);
-            config.GetXMLValue(context.str().c_str(), "@translation", translation);
+        if (toolDefinition.empty()) {
+            tool = AddTool(toolName, toolSerial.c_str());
+        } else {
+            std::string toolDefinitionPath = toolDefinitionsDir + toolDefinition;
+            tool = AddTool(toolName, toolSerial.c_str(), toolDefinitionPath.c_str());
+        }
+        context << "/tooltip";
+        std::string rotation, translation;
+        config.GetXMLValue(context.str().c_str(), "@rotation", rotation);
+        config.GetXMLValue(context.str().c_str(), "@translation", translation);
+        if (!rotation.empty()) {
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: tooltip rotation will not be applied (not implemented)" << std::endl;
+        }
+        if (!translation.empty()) {
             std::stringstream offset(translation);
             double value;
-            for (unsigned int i = 0; offset >> value; i++) {
-                tool->TooltipOffset[i] = value;
+            for (unsigned int j = 0; offset >> value; j++) {
+                tool->TooltipOffset[j] = value;
                 offset.ignore(1);
             }
         }

@@ -33,8 +33,6 @@
     <tool name="Reference"
           serial="34801403"
           definition="8700339.rom">
-      <tooltip rotation="1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0"
-               translation="0.0, 0.0, 0.0" />
     </tool>
   </tools>
 </tracker>
