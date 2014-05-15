@@ -30,6 +30,7 @@ CMN_IMPLEMENT_SERVICES(mtsNDISerialToolQtComponent);
 mtsNDISerialToolQtComponent::mtsNDISerialToolQtComponent(const std::string & taskName) :
     mtsComponent(taskName)
 {
+    ToolWidget = new Ui::mtsNDISerialToolQtWidget();
     ToolWidget->setupUi(&CentralWidget);
     ToolWidget->ToolGroup->setTitle(QString::fromStdString(taskName));
     CentralWidget.setWindowTitle(QString::fromStdString(taskName));
