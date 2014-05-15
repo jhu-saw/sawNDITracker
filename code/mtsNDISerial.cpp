@@ -205,8 +205,8 @@ bool mtsNDISerial::CommandSend(void)
     CommandAppend('\r');
     CommandAppend('\0');
 
-    const size_t bytesToSend = strlen(SerialBuffer);
-    const size_t bytesSent = SerialPort.Write(SerialBuffer, bytesToSend);
+    const int bytesToSend = static_cast<int>(strlen(SerialBuffer));
+    const int bytesSent = SerialPort.Write(SerialBuffer, bytesToSend);
     if (bytesSent != bytesToSend) {
         CMN_LOG_CLASS_RUN_ERROR << "SendCommand: sent only " << bytesSent << " of " << bytesToSend
                                 << " for command \"" << SerialBuffer << "\"" << std::endl;
@@ -224,7 +224,7 @@ bool mtsNDISerial::ResponseRead(void)
 
   SerialBufferPointer = SerialBuffer;
   do {
-      int bytesRead = SerialPort.Read(SerialBufferPointer, GetSerialBufferAvailableSize());
+      int bytesRead = SerialPort.Read(SerialBufferPointer, static_cast<int>(GetSerialBufferAvailableSize()));
       SerialBufferPointer += bytesRead;
   } while ( (*(SerialBufferPointer - 1) != '\r') && (ResponseTimer.GetElapsedTime() < ReadTimeout) );
 
