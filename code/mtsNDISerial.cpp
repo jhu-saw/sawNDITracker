@@ -49,13 +49,13 @@ void mtsNDISerial::Configure(const std::string & filename)
 
     mtsInterfaceProvided * provided = AddInterfaceProvided("Controller");
     if (provided) {
-        provided->AddCommandWrite(&mtsNDISerial::Beep, this, "Beep", mtsInt());
+        provided->AddCommandWrite(&mtsNDISerial::Beep, this, "Beep");
         provided->AddCommandVoid(&mtsNDISerial::PortHandlesInitialize, this, "PortHandlesInitialize");
         provided->AddCommandVoid(&mtsNDISerial::PortHandlesQuery, this, "PortHandlesQuery");
         provided->AddCommandVoid(&mtsNDISerial::PortHandlesEnable, this, "PortHandlesEnable");
-        provided->AddCommandWrite(&mtsNDISerial::CalibratePivot, this, "CalibratePivot", mtsStdString());
+        provided->AddCommandWrite(&mtsNDISerial::CalibratePivot, this, "CalibratePivot");
         provided->AddCommandVoid(&mtsNDISerial::ReportStrayMarkers, this, "ReportStrayMarkers");
-        provided->AddCommandWrite(&mtsNDISerial::ToggleTracking, this, "ToggleTracking", mtsBool());
+        provided->AddCommandWrite(&mtsNDISerial::ToggleTracking, this, "ToggleTracking");
         provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
     }
 
@@ -412,16 +412,16 @@ bool mtsNDISerial::SetSerialPortSettings(osaSerialPort::BaudRateType baudRate,
 }
 
 
-void mtsNDISerial::Beep(const mtsInt & numberOfBeeps)
+void mtsNDISerial::Beep(const int & numberOfBeeps)
 {
-    if (numberOfBeeps.Data < 1 || numberOfBeeps.Data > 9) {
+    if (numberOfBeeps < 1 || numberOfBeeps > 9) {
         CMN_LOG_CLASS_RUN_ERROR << "Beep: invalid input: " << numberOfBeeps << ", must be between 0-9" << std::endl;
     }
     CMN_LOG_CLASS_RUN_VERBOSE << "Beep: beeing " << numberOfBeeps << " times" << std::endl;
     do {
         CommandInitialize();
         CommandAppend("BEEP ");
-        CommandAppend(numberOfBeeps.Data);
+        CommandAppend(numberOfBeeps);
         CommandSend();
         osaSleep(100.0 * cmn_ms);
         if (!ResponseRead()) {
@@ -729,12 +729,12 @@ void mtsNDISerial::PortHandlesEnable(void)
 }
 
 
-void mtsNDISerial::ToggleTracking(const mtsBool & track)
+void mtsNDISerial::ToggleTracking(const bool & track)
 {
-    if (track.Data && !IsTracking) {
+    if (track && !IsTracking) {
         CMN_LOG_CLASS_INIT_VERBOSE << "ToggleTracking: tracking is on" << std::endl;
         CommandSend("TSTART 80");
-    } else if (!track.Data && IsTracking) {
+    } else if (!track && IsTracking) {
         CMN_LOG_CLASS_INIT_VERBOSE << "ToggleTracking: tracking is off" << std::endl;
         CommandSend("TSTOP ");
     } else {
@@ -823,9 +823,9 @@ void mtsNDISerial::Track(void)
 }
 
 
-void mtsNDISerial::CalibratePivot(const mtsStdString & toolName)
+void mtsNDISerial::CalibratePivot(const std::string & toolName)
 {
-    Tool * tool = Tools.GetItem(toolName.Data);
+    Tool * tool = Tools.GetItem(toolName);
     CMN_LOG_CLASS_RUN_WARNING << "CalibratePivot: calibrating " << tool->Name << std::endl;
 
 #if CISST_HAS_CISSTNETLIB

@@ -147,18 +147,16 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
                                osaSerialPort::ParityCheckingType parityChecking,
                                osaSerialPort::StopBitsType stopBits,
                                osaSerialPort::FlowControlType flowControl);
-    void Beep(const mtsInt & numberOfBeeps);
+    void Beep(const int & numberOfBeeps);
 
     void LoadToolDefinitionFile(const char * portHandle, const char * filePath);
     Tool * CheckTool(const char * serialNumber);
     Tool * AddTool(const std::string & name, const char * serialNumber);
     Tool * AddTool(const std::string & name, const char * serialNumber, const char * toolDefinitionFile);
 
-
-
-    void ToggleTracking(const mtsBool & track);
+    void ToggleTracking(const bool & track);
     void Track(void);
-    void CalibratePivot(const mtsStdString & toolName);
+    void CalibratePivot(const std::string & toolName);
     void ReportStrayMarkers(void);
 
     osaSerialPort SerialPort;
@@ -169,7 +167,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     ToolsType Tools;
     cmnNamedMap<Tool> PortToTool;
 
-    mtsBool IsTracking;
+    bool IsTracking;
     mtsMatrix<double> StrayMarkers;
 
     double ReadTimeout;
