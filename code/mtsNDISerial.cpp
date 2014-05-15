@@ -623,25 +623,30 @@ void mtsNDISerial::PortHandlesQuery(void)
     mainType[2] = '\0';
     char serialNumber[9];
     serialNumber[8] = '\0';
+    char channel[2];
 
     for (unsigned int i = 0; i < portHandles.size(); i++) {
         CommandInitialize();
         CommandAppend("PHINF ");
         CommandAppend(portHandles[i].Pointer());
-        CommandAppend("0005");
+        CommandAppend("0021");  // 21 = 1 || 20
         CommandSend();
         ResponseRead();
-        sscanf(SerialBuffer, "%2c%*1X%*1X%*2c%*2c%*12c%*3c%8c%*2c%*20c",
-               mainType, serialNumber);
+        sscanf(SerialBuffer, "%2c%*1c%*1c%*2c%*2c%*12c%*3c%8c%*2c%*8c%*2c%*2c%2c",
+               mainType, serialNumber, channel);
+
+        // create a unique pseudo-serialNumber to differentiate the second channel of Dual 5-DoF tools (Aurora only)
+        if (strncmp(channel, "01", 2) == 0) {
+            serialNumber[7] += 1;
+        }
 
         /// \todo This is a workaround for an issue using the USB port on the latest Aurora
-        if(strncmp(serialNumber,"00000000",8) == 0){
-            CMN_LOG_CLASS_INIT_DEBUG << "PortHandlesQuery: received serial number of all zeros.  Skipping this tool and trying again" << std::endl;
+        if (strncmp(serialNumber, "00000000", 8) == 0) {
+            CMN_LOG_CLASS_INIT_DEBUG << "PortHandlesQuery: received serial number of all zeros, skipping this tool and trying again" << std::endl;
             osaSleep(0.5 * cmn_s);
             PortHandlesInitialize();
             PortHandlesQuery();
             return;
-
         }
 
         // check if tool exists, generate a name and add it otherwise
