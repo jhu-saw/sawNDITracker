@@ -249,7 +249,7 @@ bool mtsNDISerial::ResponseRead(void)
 
 bool mtsNDISerial::ResponseRead(const char * expectedMessage)
 {
-    ResponseRead();
+    if (!ResponseRead()) return false;
 
     if (strncmp(expectedMessage, SerialBuffer, GetSerialBufferStringSize()) != 0) {
         CMN_LOG_CLASS_RUN_ERROR << "ResponseRead: expected \"" << expectedMessage
