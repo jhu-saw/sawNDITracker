@@ -46,7 +46,7 @@ inline bool Glob(const std::string & pattern, std::vector<std::string> & paths) 
 #endif
 
 
-void mtsNDISerial::Configure(const std::string & filename)
+void mtsNDISerial::Construct(void)
 {
     ReadTimeout = 1.0 * cmn_s;
     IsTracking = false;
@@ -69,7 +69,11 @@ void mtsNDISerial::Configure(const std::string & filename)
         provided->AddCommandWrite(&mtsNDISerial::ToggleTracking, this, "ToggleTracking");
         provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
     }
+}
 
+
+void mtsNDISerial::Configure(const std::string & filename)
+{
     CMN_LOG_CLASS_INIT_VERBOSE << "Configure: using " << filename << std::endl;
     cmnXMLPath config;
     config.SetInputSource(filename);

@@ -86,11 +86,12 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
 
  public:
     mtsNDISerial(const std::string & taskName, const double period) :
-        mtsTaskPeriodic(taskName, period, false, 5000) {}
+        mtsTaskPeriodic(taskName, period, false, 5000) { Construct(); }
     mtsNDISerial(const mtsTaskPeriodicConstructorArg & arg) :
-        mtsTaskPeriodic(arg) {}
+        mtsTaskPeriodic(arg) { Construct(); }
     ~mtsNDISerial(void) {};
 
+    void Construct(void);
     void Configure(const std::string & filename = "");
     void Startup(void) {};
     void Run(void);
