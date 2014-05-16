@@ -46,17 +46,18 @@ if (cisst_FOUND)
                            ${QT_LIBRARIES}
                            )
 
-    # copy configuration XML to the executable directory
-    add_custom_command (TARGET sawNDITrackerQtExample
-                        POST_BUILD
-                        COMMAND ${CMAKE_COMMAND}
-                        ARGS -E copy
-                             ${CMAKE_CURRENT_SOURCE_DIR}/configNDITracker.xml
-                             ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/configNDITracker.xml
-                        COMMENT "sawNDITrackerQtExample: copy configuration XML to the executable directory")
-
     # link against cisst libraries (and dependencies)
     cisst_target_link_libraries (sawNDITrackerQtExample ${REQUIRED_CISST_LIBRARIES})
+
+    add_custom_command (TARGET sawNDITrackerQtExample
+                        POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} ARGS -E copy
+                                ${CMAKE_CURRENT_SOURCE_DIR}/configNDITracker.xml
+                                ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/configNDITracker.xml
+                        COMMAND ${CMAKE_COMMAND} ARGS -E copy
+                                ${CMAKE_CURRENT_SOURCE_DIR}/mainPython.py
+                                ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/mainPython.py
+                        COMMENT "sawNDITrackerQtExample: copying files to the executable directory")
 
   endif (sawNDITracker_FOUND)
 
