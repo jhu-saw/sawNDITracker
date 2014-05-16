@@ -32,6 +32,20 @@ http://www.cisst.org/cisst/license.txt.
 CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsNDISerial, mtsTaskPeriodic, mtsTaskPeriodicConstructorArg);
 
 
+#if (CISST_OS == CISST_LINUX) || (CISST_OS == CISST_DARWIN)
+#include <glob.h>
+inline bool Glob(const std::string & pattern, std::vector<std::string> & paths) {
+    glob_t glob_result;
+    bool result = glob(pattern.c_str(), 0, 0, &glob_result);
+    for (unsigned int i = 0; i < glob_result.gl_pathc; i++) {
+        paths.push_back(std::string(glob_result.gl_pathv[i]));
+    }
+    globfree(&glob_result);
+    return result;
+}
+#endif
+
+
 void mtsNDISerial::Configure(const std::string & filename)
 {
     ReadTimeout = 1.0 * cmn_s;
@@ -63,17 +77,37 @@ void mtsNDISerial::Configure(const std::string & filename)
     // initialize serial port
     std::string serialPort;
     config.GetXMLValue("/tracker/controller", "@port", serialPort, "");
-    if (serialPort.empty()) {
-        CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to read serial port from: " << filename << std::endl;
-        return;
+    if (!serialPort.empty()) {
+        SerialPort.SetPortName(serialPort);
+        if (!SerialPort.Open()) {
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to open serial port: " << SerialPort.GetPortName() << std::endl;
+            return;
+        }
+        ResetSerialPort();
+    } else {
+        std::vector<std::string> ports;
+#if (CISST_OS == CISST_WINDOWS)
+        for (unsigned int i = 1; i <= 256; i++) {
+            std::ostringstream stream;
+            stream << "COM" << i;
+            ports.push_back(stream.str());
+        }
+#elif (CISST_OS == CISST_LINUX)
+        Glob("/dev/ttyS*", ports);
+        Glob("/dev/ttyUSB*", ports);
+#elif (CISST_OS == CISST_DARWIN)
+        Glob("/dev/tty*", ports);
+        Glob("/dev/cu*", ports);
+#endif
+        for (unsigned int i = 0; i < ports.size(); i++) {
+            SerialPort.SetPortName(ports[i]);
+            CMN_LOG_CLASS_INIT_VERBOSE << "Configure: trying serial port: " << SerialPort.GetPortName() << std::endl;
+            if (!SerialPort.Open()) continue;
+            if (ResetSerialPort()) break;
+            SerialPort.Close();
+        }
     }
 
-    SerialPort.SetPortName(serialPort);
-    if (!SerialPort.Open()) {
-        CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to open serial port: " << SerialPort.GetPortName() << std::endl;
-        return;
-    }
-    ResetSerialPort();
     SetSerialPortSettings(osaSerialPort::BaudRate115200,
                           osaSerialPort::CharacterSize8,
                           osaSerialPort::ParityCheckingNone,
