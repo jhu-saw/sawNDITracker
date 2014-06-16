@@ -72,7 +72,7 @@ void mtsNDISerialToolQtComponent::RecordQSlot(void)
 {
     QString path = QDir::currentPath() + "/CollectedPoints.csv";
     std::ofstream file;
-    file.open(path.toAscii(), std::ios::app);
+    file.open(path.toLatin1(), std::ios::app);
     file << NDI.PositionCartesian.Timestamp() << ", "
          << NDI.PositionCartesian.Position().Translation().X() << ", "
          << NDI.PositionCartesian.Position().Translation().Y() << ", "
