@@ -321,7 +321,7 @@ bool mtsNDISerial::ResponseCheckCRC(void)
 bool mtsNDISerial::ResetSerialPort(void)
 {
     SerialPort.WriteBreak(0.5 * cmn_s);
-    osaSleep(200.0 * cmn_ms);
+    osaSleep(2000.0 * cmn_ms);
 
     SerialPort.SetBaudRate(osaSerialPort::BaudRate9600);
     SerialPort.SetCharacterSize(osaSerialPort::CharacterSize8);
