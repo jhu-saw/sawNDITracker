@@ -87,7 +87,11 @@ void mtsNDISerial::Configure(const std::string & filename)
             CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to open serial port: " << SerialPort.GetPortName() << std::endl;
             return;
         }
-        ResetSerialPort();
+        if(!ResetSerialPort()) {
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: could not reset serial port." << std::endl;
+            SerialPort.Close();
+            return;
+        }
     } else {
         std::vector<std::string> ports;
 #if (CISST_OS == CISST_WINDOWS)
@@ -117,6 +121,10 @@ void mtsNDISerial::Configure(const std::string & filename)
                           osaSerialPort::ParityCheckingNone,
                           osaSerialPort::StopBitsOne,
                           osaSerialPort::FlowControlNone);
+
+    // increase the timeout during initialization
+    double timeout = this->ReadTimeout;
+    ReadTimeout = 5.0 * cmn_s;
 
     // initialize NDI controller
     CommandSend("INIT ");
@@ -162,6 +170,7 @@ void mtsNDISerial::Configure(const std::string & filename)
             }
         }
     }
+    this->ReadTimeout = timeout;
 }
 
 
@@ -814,16 +823,19 @@ void mtsNDISerial::Track(void)
         if (strncmp(parsePointer, "MISSING", 7) == 0) {
             CMN_LOG_CLASS_RUN_WARNING << "Track: " << tool->Name << " is missing" << std::endl;
             tool->TooltipPosition.SetValid(false);
+            tool->MarkerPosition.SetValid(false);
             parsePointer += 7;
             parsePointer += 8;  // skip Port Status
         } else if (strncmp(parsePointer, "DISABLED", 8) == 0) {
             CMN_LOG_CLASS_RUN_WARNING << "Track: " << tool->Name << " is disabled" << std::endl;
             tool->TooltipPosition.SetValid(false);
+            tool->MarkerPosition.SetValid(false);
             parsePointer += 8;
             parsePointer += 8;  // skip Port Status
         } else if (strncmp(parsePointer, "UNOCCUPIED", 10) == 0) {
             CMN_LOG_CLASS_RUN_WARNING << "Track: " << tool->Name << " is unoccupied" << std::endl;
             tool->TooltipPosition.SetValid(false);
+            tool->MarkerPosition.SetValid(false);
             parsePointer += 10;
             parsePointer += 8;  // skip Port Status
         } else {
@@ -839,7 +851,7 @@ void mtsNDISerial::Track(void)
             tooltipPosition.Translation() = toolPosition;
             tool->ErrorRMS /= 10000.0;
             tool->MarkerPosition.Position() = tooltipPosition; // Tool Frame Position = Orientation + Frame Origin
-                        tool->MarkerPosition.SetValid(true);
+            tool->MarkerPosition.SetValid(true);
 
             tooltipPosition.Translation() += tooltipPosition.Rotation() * tool->TooltipOffset;  // apply tooltip offset
             tool->TooltipPosition.Position() = tooltipPosition;  // Tool Tip Position = Orientation + Tooltip
