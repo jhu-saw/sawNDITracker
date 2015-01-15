@@ -69,6 +69,11 @@ void mtsNDISerial::Construct(void)
         provided->AddCommandWrite(&mtsNDISerial::ToggleTracking, this, "ToggleTracking");
         provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
     }
+
+#ifndef CISST_HAS_CISSTNETLIB
+    CMN_LOG_CLASS_RUN_WARNING << "Construct: CalibratePivot requires cisstNetlib which is missing" << std::endl;
+#endif
+
 }
 
 
@@ -258,10 +263,20 @@ bool mtsNDISerial::ResponseRead(void)
   ResponseTimer.Start();
 
   SerialBufferPointer = SerialBuffer;
+
+  bool receivedMessage = false;
+
   do {
-      int bytesRead = SerialPort.Read(SerialBufferPointer, static_cast<int>(GetSerialBufferAvailableSize()));
-      SerialBufferPointer += bytesRead;
-  } while ( (*(SerialBufferPointer - 1) != '\r') && (ResponseTimer.GetElapsedTime() < ReadTimeout) );
+       int bytesRead = SerialPort.Read(SerialBufferPointer, static_cast<int>(GetSerialBufferAvailableSize()));
+
+       SerialBufferPointer += bytesRead;
+
+       if ( (GetSerialBufferSize() > 0) && (*(SerialBufferPointer - 1) == '\r')) {
+            receivedMessage = true;
+            CMN_LOG_CLASS_RUN_DEBUG << "ResponseRead: raw message: \'" << SerialBuffer << "\'" << std::endl;
+       }
+
+  } while ((ResponseTimer.GetElapsedTime() < ReadTimeout) && !receivedMessage);
 
   ResponseTimer.Stop();
 
@@ -321,7 +336,7 @@ bool mtsNDISerial::ResponseCheckCRC(void)
 bool mtsNDISerial::ResetSerialPort(void)
 {
     SerialPort.WriteBreak(0.5 * cmn_s);
-    osaSleep(200.0 * cmn_ms);
+    osaSleep(2000.0 * cmn_ms);
 
     SerialPort.SetBaudRate(osaSerialPort::BaudRate9600);
     SerialPort.SetCharacterSize(osaSerialPort::CharacterSize8);
