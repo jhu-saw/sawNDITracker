@@ -1,6 +1,4 @@
 import os
-import platform
-import sys
 import time
 
 from cisstCommonPython import *
@@ -8,7 +6,6 @@ from cisstVectorPython import *
 from cisstOSAbstractionPython import *
 from cisstMultiTaskPython import *
 from cisstParameterTypesPython import *
-from cisstStereoVisionPython import *
 
 name = 'My Tracker'
 period = 0.01

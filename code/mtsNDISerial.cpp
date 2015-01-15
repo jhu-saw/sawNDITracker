@@ -92,8 +92,8 @@ void mtsNDISerial::Configure(const std::string & filename)
             CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to open serial port: " << SerialPort.GetPortName() << std::endl;
             return;
         }
-        if(!ResetSerialPort()) {
-            CMN_LOG_CLASS_INIT_ERROR << "Configure: could not reset serial port." << std::endl;
+        if (!ResetSerialPort()) {
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to reset serial port." << std::endl;
             SerialPort.Close();
             return;
         }
@@ -268,43 +268,37 @@ bool mtsNDISerial::CommandSend(void)
 
 bool mtsNDISerial::ResponseRead(void)
 {
-  ResponseTimer.Reset();
-  ResponseTimer.Start();
+    ResponseTimer.Reset();
+    ResponseTimer.Start();
 
-  SerialBufferPointer = SerialBuffer;
+    SerialBufferPointer = SerialBuffer;
 
-  bool receivedMessage = false;
+    bool receivedMessage = false;
+    do {
+        int bytesRead = SerialPort.Read(SerialBufferPointer, static_cast<int>(GetSerialBufferAvailableSize()));
+        SerialBufferPointer += bytesRead;
+        receivedMessage = (GetSerialBufferSize() > 0) && (*(SerialBufferPointer - 1) == '\r');
+    } while ((ResponseTimer.GetElapsedTime() < ReadTimeout) && !receivedMessage);
 
-  do {
-       int bytesRead = SerialPort.Read(SerialBufferPointer, static_cast<int>(GetSerialBufferAvailableSize()));
+    ResponseTimer.Stop();
 
-       SerialBufferPointer += bytesRead;
+    if (ResponseTimer.GetElapsedTime() > ReadTimeout) {
+        CMN_LOG_CLASS_RUN_ERROR << "ResponseRead: read command timed out." << std::endl;
+        return false;
+    }
 
-       if ( (GetSerialBufferSize() > 0) && (*(SerialBufferPointer - 1) == '\r')) {
-            receivedMessage = true;
-            CMN_LOG_CLASS_RUN_DEBUG << "ResponseRead: raw message: \'" << SerialBuffer << "\'" << std::endl;
-       }
-
-  } while ((ResponseTimer.GetElapsedTime() < ReadTimeout) && !receivedMessage);
-
-  ResponseTimer.Stop();
-
-  if (ResponseTimer.GetElapsedTime() > ReadTimeout) {
-      CMN_LOG_CLASS_RUN_ERROR << "ResponseRead: read command timed out." << std::endl;
-      return false;
-  }
-
-  if (!ResponseCheckCRC()) {
-      return false;
-  }
-  return true;
+    if (!ResponseCheckCRC()) {
+        return false;
+    }
+    return true;
 }
 
 
 bool mtsNDISerial::ResponseRead(const char * expectedMessage)
 {
-    if (!ResponseRead()) return false;
-
+    if (!ResponseRead()) {
+        return false;
+    }
     if (strncmp(expectedMessage, SerialBuffer, GetSerialBufferStringSize()) != 0) {
         CMN_LOG_CLASS_RUN_ERROR << "ResponseRead: expected \"" << expectedMessage
                                 << "\", but received \"" << SerialBuffer << "\"" << std::endl;
@@ -355,7 +349,6 @@ bool mtsNDISerial::ResetSerialPort(void)
     SerialPort.Configure();
 
     if (!ResponseRead("RESET")) {
-        CMN_LOG_CLASS_INIT_ERROR << "ResetSerialPort: failed to reset" << std::endl;
         return false;
     }
     return true;
@@ -952,7 +945,7 @@ void mtsNDISerial::CalibratePivot(const std::string & toolName)
                               << " * pivot position: " << pivot << "\n"
                               << " * error RMS: " << errorRMS << std::endl;
 #else
-    CMN_LOG_CLASS_RUN_WARNING << "CalibratePivot: requires cisstNetlib" << std::endl;
+    CMN_LOG_CLASS_RUN_ERROR << "CalibratePivot: requires cisstNetlib" << std::endl;
 #endif
 }
 
