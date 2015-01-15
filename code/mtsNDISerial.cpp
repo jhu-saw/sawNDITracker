@@ -69,6 +69,11 @@ void mtsNDISerial::Construct(void)
         provided->AddCommandWrite(&mtsNDISerial::ToggleTracking, this, "ToggleTracking");
         provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
     }
+
+#ifndef CISST_HAS_CISSTNETLIB
+    CMN_LOG_CLASS_RUN_WARNING << "Construct: CalibratePivot requires cisstNetlib which is missing" << std::endl;
+#endif
+
 }
 
 
@@ -87,7 +92,11 @@ void mtsNDISerial::Configure(const std::string & filename)
             CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to open serial port: " << SerialPort.GetPortName() << std::endl;
             return;
         }
-        ResetSerialPort();
+        if(!ResetSerialPort()) {
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: could not reset serial port." << std::endl;
+            SerialPort.Close();
+            return;
+        }
     } else {
         std::vector<std::string> ports;
 #if (CISST_OS == CISST_WINDOWS)
@@ -117,6 +126,10 @@ void mtsNDISerial::Configure(const std::string & filename)
                           osaSerialPort::ParityCheckingNone,
                           osaSerialPort::StopBitsOne,
                           osaSerialPort::FlowControlNone);
+
+    // increase the timeout during initialization
+    double timeout = this->ReadTimeout;
+    ReadTimeout = 5.0 * cmn_s;
 
     // initialize NDI controller
     CommandSend("INIT ");
@@ -162,6 +175,7 @@ void mtsNDISerial::Configure(const std::string & filename)
             }
         }
     }
+    this->ReadTimeout = timeout;
 }
 
 
@@ -258,10 +272,20 @@ bool mtsNDISerial::ResponseRead(void)
   ResponseTimer.Start();
 
   SerialBufferPointer = SerialBuffer;
+
+  bool receivedMessage = false;
+
   do {
-      int bytesRead = SerialPort.Read(SerialBufferPointer, static_cast<int>(GetSerialBufferAvailableSize()));
-      SerialBufferPointer += bytesRead;
-  } while ( (*(SerialBufferPointer - 1) != '\r') && (ResponseTimer.GetElapsedTime() < ReadTimeout) );
+       int bytesRead = SerialPort.Read(SerialBufferPointer, static_cast<int>(GetSerialBufferAvailableSize()));
+
+       SerialBufferPointer += bytesRead;
+
+       if ( (GetSerialBufferSize() > 0) && (*(SerialBufferPointer - 1) == '\r')) {
+            receivedMessage = true;
+            CMN_LOG_CLASS_RUN_DEBUG << "ResponseRead: raw message: \'" << SerialBuffer << "\'" << std::endl;
+       }
+
+  } while ((ResponseTimer.GetElapsedTime() < ReadTimeout) && !receivedMessage);
 
   ResponseTimer.Stop();
 
@@ -321,7 +345,7 @@ bool mtsNDISerial::ResponseCheckCRC(void)
 bool mtsNDISerial::ResetSerialPort(void)
 {
     SerialPort.WriteBreak(0.5 * cmn_s);
-    osaSleep(200.0 * cmn_ms);
+    osaSleep(2000.0 * cmn_ms);
 
     SerialPort.SetBaudRate(osaSerialPort::BaudRate9600);
     SerialPort.SetCharacterSize(osaSerialPort::CharacterSize8);
@@ -814,16 +838,19 @@ void mtsNDISerial::Track(void)
         if (strncmp(parsePointer, "MISSING", 7) == 0) {
             CMN_LOG_CLASS_RUN_WARNING << "Track: " << tool->Name << " is missing" << std::endl;
             tool->TooltipPosition.SetValid(false);
+            tool->MarkerPosition.SetValid(false);
             parsePointer += 7;
             parsePointer += 8;  // skip Port Status
         } else if (strncmp(parsePointer, "DISABLED", 8) == 0) {
             CMN_LOG_CLASS_RUN_WARNING << "Track: " << tool->Name << " is disabled" << std::endl;
             tool->TooltipPosition.SetValid(false);
+            tool->MarkerPosition.SetValid(false);
             parsePointer += 8;
             parsePointer += 8;  // skip Port Status
         } else if (strncmp(parsePointer, "UNOCCUPIED", 10) == 0) {
             CMN_LOG_CLASS_RUN_WARNING << "Track: " << tool->Name << " is unoccupied" << std::endl;
             tool->TooltipPosition.SetValid(false);
+            tool->MarkerPosition.SetValid(false);
             parsePointer += 10;
             parsePointer += 8;  // skip Port Status
         } else {
@@ -839,7 +866,7 @@ void mtsNDISerial::Track(void)
             tooltipPosition.Translation() = toolPosition;
             tool->ErrorRMS /= 10000.0;
             tool->MarkerPosition.Position() = tooltipPosition; // Tool Frame Position = Orientation + Frame Origin
-                        tool->MarkerPosition.SetValid(true);
+            tool->MarkerPosition.SetValid(true);
 
             tooltipPosition.Translation() += tooltipPosition.Rotation() * tool->TooltipOffset;  // apply tooltip offset
             tool->TooltipPosition.Position() = tooltipPosition;  // Tool Tip Position = Orientation + Tooltip
