@@ -2,11 +2,10 @@
 /* ex: set filetype=cpp softtabstop=4 shiftwidth=4 tabstop=4 cindent expandtab: */
 
 /*
-
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2015 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -121,15 +120,15 @@ void mtsNDISerial::Configure(const std::string & filename)
         }
     }
 
+    // increase the timeout during initialization
+    double timeout = this->ReadTimeout;
+    ReadTimeout = 5.0 * cmn_s;
+
     SetSerialPortSettings(osaSerialPort::BaudRate115200,
                           osaSerialPort::CharacterSize8,
                           osaSerialPort::ParityCheckingNone,
                           osaSerialPort::StopBitsOne,
                           osaSerialPort::FlowControlNone);
-
-    // increase the timeout during initialization
-    double timeout = this->ReadTimeout;
-    ReadTimeout = 5.0 * cmn_s;
 
     // initialize NDI controller
     CommandSend("INIT ");
@@ -344,8 +343,9 @@ bool mtsNDISerial::ResponseCheckCRC(void)
 
 bool mtsNDISerial::ResetSerialPort(void)
 {
-    SerialPort.WriteBreak(0.5 * cmn_s);
-    osaSleep(2000.0 * cmn_ms);
+    const double breakTime = 0.5 * cmn_s;
+    SerialPort.WriteBreak(breakTime);
+    osaSleep(breakTime);
 
     SerialPort.SetBaudRate(osaSerialPort::BaudRate9600);
     SerialPort.SetCharacterSize(osaSerialPort::CharacterSize8);
