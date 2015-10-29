@@ -563,6 +563,7 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name, const char 
         // create an interface for tool
         tool->Interface = AddInterfaceProvided(name);
         if (tool->Interface) {
+            tool->Interface->AddCommandRead(&mtsStateTable::GetIndexReader, &StateTable, "GetTableIndex");
             StateTable.AddData(tool->TooltipPosition, name + "Position");
             tool->Interface->AddCommandReadState(StateTable, tool->TooltipPosition, "GetPositionCartesian");
             StateTable.AddData(tool->MarkerPosition, name + "Marker");
