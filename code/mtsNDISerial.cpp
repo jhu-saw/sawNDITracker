@@ -47,7 +47,7 @@ inline bool Glob(const std::string & pattern, std::vector<std::string> & paths) 
 
 void mtsNDISerial::Construct(void)
 {
-    ReadTimeout = 1.0 * cmn_s;
+    ReadTimeout = 2.0 * cmn_s;
     IsTracking = false;
     StrayMarkers.SetSize(50, 5);
     StrayMarkers.Zeros();
@@ -122,7 +122,7 @@ void mtsNDISerial::Configure(const std::string & filename)
 
     // increase the timeout during initialization
     double timeout = this->ReadTimeout;
-    ReadTimeout = 5.0 * cmn_s;
+    ReadTimeout = 10.0 * cmn_s;
 
     SetSerialPortSettings(osaSerialPort::BaudRate115200,
                           osaSerialPort::CharacterSize8,
@@ -289,7 +289,7 @@ bool mtsNDISerial::ResponseRead(void)
   ResponseTimer.Stop();
 
   if (ResponseTimer.GetElapsedTime() > ReadTimeout) {
-      CMN_LOG_CLASS_RUN_ERROR << "ResponseRead: read command timed out." << std::endl;
+      CMN_LOG_CLASS_RUN_ERROR << "ResponseRead: read command timed out (timeout is " << ReadTimeout << "s)" << std::endl;
       return false;
   }
 
@@ -302,7 +302,10 @@ bool mtsNDISerial::ResponseRead(void)
 
 bool mtsNDISerial::ResponseRead(const char * expectedMessage)
 {
-    if (!ResponseRead()) return false;
+    if (!ResponseRead()) {
+        CMN_LOG_CLASS_RUN_ERROR << "ResponseRead: timeout while waiting for \"" << expectedMessage << "\"" << std::endl;
+        return false;
+    }
 
     if (strncmp(expectedMessage, SerialBuffer, GetSerialBufferStringSize()) != 0) {
         CMN_LOG_CLASS_RUN_ERROR << "ResponseRead: expected \"" << expectedMessage
@@ -343,10 +346,6 @@ bool mtsNDISerial::ResponseCheckCRC(void)
 
 bool mtsNDISerial::ResetSerialPort(void)
 {
-    const double breakTime = 0.5 * cmn_s;
-    SerialPort.WriteBreak(breakTime);
-    osaSleep(breakTime);
-
     SerialPort.SetBaudRate(osaSerialPort::BaudRate9600);
     SerialPort.SetCharacterSize(osaSerialPort::CharacterSize8);
     SerialPort.SetParityChecking(osaSerialPort::ParityCheckingNone);
@@ -354,10 +353,20 @@ bool mtsNDISerial::ResetSerialPort(void)
     SerialPort.SetFlowControl(osaSerialPort::FlowControlNone);
     SerialPort.Configure();
 
+    const double breakTime = 0.5 * cmn_s;
+    SerialPort.WriteBreak(breakTime);
+    // wait for length of break and a bit more
+    osaSleep(breakTime + 0.5 * cmn_s);
+    
+    // temporary increase timeout to leave time for the system to boot
+    const double previousReadTimeout = this->ReadTimeout;
+    this->ReadTimeout = 10.0 * cmn_s;
     if (!ResponseRead("RESET")) {
         CMN_LOG_CLASS_INIT_ERROR << "ResetSerialPort: failed to reset" << std::endl;
+        this->ReadTimeout = previousReadTimeout;
         return false;
     }
+    this->ReadTimeout = previousReadTimeout;
     return true;
 }
 
@@ -449,6 +458,7 @@ bool mtsNDISerial::SetSerialPortSettings(osaSerialPort::BaudRateType baudRate,
     }
 
     if (!CommandSend()) {
+        CMN_LOG_CLASS_INIT_ERROR << "SetSerialPortSettings: failed to send command" << std::endl;
         return false;
     }
 
@@ -460,8 +470,10 @@ bool mtsNDISerial::SetSerialPortSettings(osaSerialPort::BaudRateType baudRate,
         SerialPort.SetStopBits(stopBits);
         SerialPort.SetFlowControl(flowControl);
         SerialPort.Configure();
+        osaSleep(200.0 * cmn_ms);
         return true;
     }
+    CMN_LOG_CLASS_INIT_ERROR << "SetSerialPortSettings: didn't receive \"OKAY\"" << std::endl;
     return false;
 }
 
