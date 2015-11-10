@@ -22,14 +22,15 @@ http://www.cisst.org/cisst/license.txt.
   \brief SAW component for NDI surgical trackers with serial (RS-232) interface.
   \ingroup sawComponents
 
+  \bug CISST_HAS_CISSTNETLIB var is not forwarded from cisst - results in lack of pivot calibration
+
   \warning Missing support for 14400bps, 921600bps and 1228739bps baud rates in osaSerialPort.
 
-  \todo CISST_HAS_CISSTNETLIB var is not forwarded from cisst - results in lack of pivot calibration
   \todo Consider deriving from mtsTaskContinuous using an "adaptive" sleep.
   \todo Verify the need for existing sleep times.
   \todo Enable/disable individual tools on-the-fly (or dynamically disable their interfaces).
   \todo Move CalibratePivot to cisstNumerical?
-  \todo Error handling for partial messages and concactinated messages in ResponseRead()
+  \todo Error handling for partial and concatenated messages in ResponseRead()
   \todo Handle other main types of tools (besides pointer, reference, etc.).
   \todo Parse port/system status, in order to get "partially out of volume", etc..
   \todo Refactor ComputeCRC and implement a CRC check in CommandSend (move CRC check to osaSerialPort?).
@@ -123,8 +124,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
         if (GetSerialBufferSize() == 0)  {
             CMN_LOG_CLASS_RUN_ERROR << "GetSerialBufferStringSize: string is empty and not null terminated" << std::endl;
             return 0;
-        }
-        else if (*(SerialBufferPointer - 1) == '\0') {
+        } else if (*(SerialBufferPointer - 1) == '\0') {
             return GetSerialBufferSize() - 1;
         }
         CMN_LOG_CLASS_RUN_ERROR << "GetSerialBufferStringSize: string is not null terminated" << std::endl;
