@@ -56,6 +56,7 @@ void mtsNDISerial::Construct(void)
     SerialBufferPointer = SerialBuffer;
 
     StateTable.AddData(IsTracking, "IsTracking");
+    StateTable.AddData(TrackStrayMarkers, "TrackStrayMarkers");
     StateTable.AddData(StrayMarkers, "StrayMarkers");
 
     mtsInterfaceProvided * provided = AddInterfaceProvided("Controller");
@@ -68,6 +69,8 @@ void mtsNDISerial::Construct(void)
         provided->AddCommandVoid(&mtsNDISerial::ReportStrayMarkers, this, "ReportStrayMarkers");
         provided->AddCommandWrite(&mtsNDISerial::ToggleTracking, this, "ToggleTracking");
         provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
+        provided->AddCommandReadState(StateTable, TrackStrayMarkers, "TrackStrayMarkers");
+        provided->AddCommandReadState(StateTable, StrayMarkers, "StrayMarkers");
     }
 
 #ifndef CISST_HAS_CISSTNETLIB
@@ -925,7 +928,7 @@ void mtsNDISerial::Track(void)
 
         // read marker positions
         std::vector<vct3> markerPositions(numMarkers);
-        std::vector<bool> markerVisibilities(numMarkers);
+        std::vector<bool> markerVisibilities(numMarkers);        
         StrayMarkers.Zeros();
         for (unsigned int i = 0; i < numMarkers; i++) {
             sscanf(parsePointer, "%7lf%7lf%7lf",
