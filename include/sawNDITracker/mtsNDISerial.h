@@ -160,6 +160,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     Tool * AddTool(const std::string & name, const char * serialNumber, const char * toolDefinitionFile);
 
     void ToggleTracking(const bool & track);
+    void ToggleStrayMarkers(const bool & stray);
     void Track(void);
     void CalibratePivot(const std::string & toolName);
     void ReportStrayMarkers(void);
@@ -173,7 +174,8 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     cmnNamedMap<Tool> PortToTool;
 
     bool IsTracking;
-    mtsMatrix<double> StrayMarkers;
+    bool TrackStrayMarkers;
+    mtsMatrix<double> StrayMarkers;      
 
     double ReadTimeout;
     osaStopwatch ResponseTimer;
