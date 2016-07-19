@@ -1,6 +1,5 @@
 #
-#
-# (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights
+# (C) Copyright 2009-2016 Johns Hopkins University (JHU), All Rights
 # Reserved.
 #
 # --- begin cisst license - do not edit ---
@@ -11,8 +10,12 @@
 #
 # --- end cisst license ---
 
+cmake_minimum_required (VERSION 2.8)
+
 # create a list of required cisst libraries
-set (REQUIRED_CISST_LIBRARIES cisstCommon cisstCommonQt cisstCommonXML
+set (REQUIRED_CISST_LIBRARIES cisstCommon
+                              cisstCommonQt
+                              cisstCommonXML
                               cisstVector
                               cisstNumerical
                               cisstOSAbstraction
@@ -28,7 +31,7 @@ if (cisst_FOUND)
   include (${CISST_USE_FILE})
 
   # sawNDITracker has been compiled within cisst, we should find it automatically
-  cisst_find_saw_component (sawNDITracker REQUIRED)
+  find_package (sawNDITracker REQUIRED)
 
   if (sawNDITracker_FOUND)
 
