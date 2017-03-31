@@ -171,19 +171,21 @@ void mtsNDISerial::Configure(const std::string & filename)
             std::string toolDefinitionPath = toolDefinitionsDir + toolDefinition;
             tool = AddTool(toolName, toolSerial.c_str(), toolDefinitionPath.c_str());
         }
-        context << "/tooltip";
-        std::string rotation, translation;
-        config.GetXMLValue(context.str().c_str(), "@rotation", rotation);
-        config.GetXMLValue(context.str().c_str(), "@translation", translation);
-        if (!rotation.empty()) {
-            CMN_LOG_CLASS_INIT_ERROR << "Configure: tooltip rotation will not be applied (not implemented)" << std::endl;
-        }
-        if (!translation.empty()) {
-            std::stringstream offset(translation);
-            double value;
-            for (unsigned int j = 0; offset >> value; j++) {
-                tool->TooltipOffset[j] = value;
-                offset.ignore(1);
+        if (tool) {
+            context << "/tooltip";
+            std::string rotation, translation;
+            config.GetXMLValue(context.str().c_str(), "@rotation", rotation);
+            config.GetXMLValue(context.str().c_str(), "@translation", translation);
+            if (!rotation.empty()) {
+                CMN_LOG_CLASS_INIT_ERROR << "Configure: tooltip rotation will not be applied (not implemented)" << std::endl;
+            }
+            if (!translation.empty()) {
+                std::stringstream offset(translation);
+                double value;
+                for (unsigned int j = 0; offset >> value; j++) {
+                    tool->TooltipOffset[j] = value;
+                    offset.ignore(1);
+                }
             }
         }
     }
@@ -603,14 +605,19 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name, const char 
 {
     char portHandle[3];
     portHandle[2] = '\0';
+    Tool *toolPtr = 0;
 
     // request port handle for wireless tool
     CommandSend("PHRQ *********1****");
-    ResponseRead();
-    sscanf(SerialBuffer, "%2c", portHandle);
-
-    LoadToolDefinitionFile(portHandle, toolDefinitionFile);
-    return AddTool(name, serialNumber);
+    if (ResponseRead()) {
+        sscanf(SerialBuffer, "%2c", portHandle);
+        CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: loading " << name << " on port " << portHandle << std::endl;
+        LoadToolDefinitionFile(portHandle, toolDefinitionFile);
+        toolPtr = AddTool(name, serialNumber);
+    }
+    else
+        CMN_LOG_CLASS_INIT_ERROR << "AddTool: failed to receive port handle for wireless tool" << std::endl;
+    return toolPtr;
 }
 
 
