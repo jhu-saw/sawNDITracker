@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2015 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2017 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -140,6 +140,15 @@ void mtsNDISerial::Configure(const std::string & filename)
 
     std::string toolDefinitionsDir;
     config.GetXMLValue("/tracker/controller", "@definitions", toolDefinitionsDir, "");
+    // Check if path has trailing separator (slash or back-slash) and add
+    // one if necessary.
+    char lastChar = toolDefinitionsDir.at(toolDefinitionsDir.length()-1);
+#if (CISST_OS == CISST_WINDOWS)
+    if ((lastChar != '/') && (lastChar != '\\'))
+#else
+    if (lastChar != '/')
+#endif
+        toolDefinitionsDir.push_back('/');
 
     // add tools
     int numberOfTools = 0;
