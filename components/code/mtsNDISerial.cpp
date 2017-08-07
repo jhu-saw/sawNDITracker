@@ -23,6 +23,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstVector/vctDynamicMatrixTypes.h>
 #include <cisstOSAbstraction/osaSleep.h>
 #include <cisstMultiTask/mtsInterfaceProvided.h>
+#include <cisstNumerical/nmrConfig.h>     // for CISST_HAS_CISSTNETLIB
 #if CISST_HAS_CISSTNETLIB
     #include <cisstNumerical/nmrLSSolver.h>
 #endif
@@ -73,7 +74,7 @@ void mtsNDISerial::Construct(void)
         provided->AddCommandReadState(StateTable, StrayMarkers, "StrayMarkers");
     }
 
-#ifndef CISST_HAS_CISSTNETLIB
+#if !CISST_HAS_CISSTNETLIB
     CMN_LOG_CLASS_RUN_WARNING << "Construct: CalibratePivot requires cisstNetlib which is missing" << std::endl;
 #endif
 

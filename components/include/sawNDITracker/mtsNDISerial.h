@@ -6,7 +6,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2017 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -21,8 +21,6 @@ http://www.cisst.org/cisst/license.txt.
   \file
   \brief SAW component for NDI surgical trackers with serial (RS-232) interface.
   \ingroup sawComponents
-
-  \bug CISST_HAS_CISSTNETLIB var is not forwarded from cisst - results in lack of pivot calibration
 
   \warning Missing support for 14400bps, 921600bps and 1228739bps baud rates in osaSerialPort.
 
