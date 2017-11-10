@@ -25,12 +25,13 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisstCommon/cmnPath.h>
 #include <cisstCommon/cmnUnits.h>
+#include <cisstCommon/cmnCommandLineOptions.h>
+
 #include <cisstOSAbstraction/osaThreadedLogFile.h>
-#include <cisstMultiTask/mtsCollectorState.h>
 #include <cisstMultiTask/mtsTaskManager.h>
+
 #include <sawNDITracker/mtsNDISerial.h>
-#include <sawNDITracker/mtsNDISerialControllerQtComponent.h>
-#include <sawNDITracker/mtsNDISerialToolQtComponent.h>
+#include <sawNDITracker/mtsNDISerialControllerQtWidget.h>
 
 #include <QApplication>
 #include <QMainWindow>
@@ -45,54 +46,59 @@ int main(int argc, char * argv[])
     cmnLogger::SetMaskClassMatching("mtsNDISerial", CMN_LOG_ALLOW_ALL);
     cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
+    // parse options
+    cmnCommandLineOptions options;
+    std::string port;
+    std::string configFile;
+
+    options.AddOptionOneValue("j", "json-config",
+                              "json configuration file",
+                              cmnCommandLineOptions::OPTIONAL_OPTION, &configFile);
+
+    options.AddOptionOneValue("p", "serial-port",
+                              "serial port (e.g. /dev/ttyUSB0, COM...)",
+                              cmnCommandLineOptions::OPTIONAL_OPTION, &port);
+
+    // check that all required options have been provided
+    std::string errorMessage;
+    if (!options.Parse(argc, argv, errorMessage)) {
+        std::cerr << "Error: " << errorMessage << std::endl;
+        options.PrintUsage(std::cerr);
+        return -1;
+    }
+    std::string arguments;
+    options.PrintParsedArguments(arguments);
+    std::cout << "Options provided:" << std::endl << arguments << std::endl;
+
     // create a Qt user interface
     QApplication application(argc, argv);
 
     // create the components
-    mtsNDISerial * componentNDISerial = new mtsNDISerial("componentNDISerial", 50.0 * cmn_ms);
-    mtsNDISerialControllerQtComponent * componentControllerQtComponent = new mtsNDISerialControllerQtComponent("componentControllerQtComponent");
+    mtsNDISerial * tracker = new mtsNDISerial("NDI", 50.0 * cmn_ms);
+    if (port != "") {
+        tracker->SetSerialPort(port);
+    }
+    mtsNDISerialControllerQtWidget * trackerWidget = new mtsNDISerialControllerQtWidget("NDI Widget");
 
     // configure the components
     cmnPath searchPath;
     searchPath.Add(cmnPath::GetWorkingDirectory());
-    std::string configPath = searchPath.Find("configNDITracker.xml");
+    std::string configPath = searchPath.Find(configFile);
 	if (configPath.empty()) {
-		std::cerr << "Failed to find configuration: " << configPath << std::endl;
+		std::cerr << "Failed to find configuration file \"" << configFile << "\"" << std::endl
+                  << "Searched in: " << configPath << std::endl;
 		return 1;
 	}
-    componentNDISerial->Configure(configPath);
+    tracker->Configure(configPath);
 
     // add the components to the component manager
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
-    componentManager->AddComponent(componentNDISerial);
-    componentManager->AddComponent(componentControllerQtComponent);
+    componentManager->AddComponent(tracker);
+    componentManager->AddComponent(trackerWidget);
 
     // connect the components, e.g. RequiredInterface -> ProvidedInterface
-    componentManager->Connect(componentControllerQtComponent->GetName(), "Controller",
-                              componentNDISerial->GetName(), "Controller");
-
-    // add data collection for mtsNDISerial state table
-    mtsCollectorState * componentCollector =
-        new mtsCollectorState(componentNDISerial->GetName(),
-                              componentNDISerial->GetDefaultStateTableName(),
-                              mtsCollectorBase::COLLECTOR_FILE_FORMAT_CSV);
-
-    // add interfaces for tools and populate controller widget with tool widgets
-    for (unsigned int i = 0; i < componentNDISerial->GetNumberOfTools(); i++) {
-        std::string toolName = componentNDISerial->GetToolName(i);
-        mtsNDISerialToolQtComponent * componentToolQtComponent = new mtsNDISerialToolQtComponent(toolName);
-        componentControllerQtComponent->AddTool(componentToolQtComponent,
-                                                componentToolQtComponent->GetWidget());
-        componentManager->AddComponent(componentToolQtComponent);
-        componentManager->Connect(toolName, toolName,
-                                  componentNDISerial->GetName(), toolName);
-
-        componentCollector->AddSignal(toolName + "Position");
-    }
-    componentManager->AddComponent(componentCollector);
-    componentCollector->Connect();
-    componentManager->Connect(componentControllerQtComponent->GetName(), "DataCollector",
-                              componentCollector->GetName(), "Control");
+    componentManager->Connect(trackerWidget->GetName(), "Controller",
+                              tracker->GetName(), "Controller");
 
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);
@@ -100,7 +106,7 @@ int main(int argc, char * argv[])
 
     // create a main window to hold QWidgets
     QMainWindow * mainWindow = new QMainWindow();
-    mainWindow->setCentralWidget(componentControllerQtComponent->GetWidget());
+    mainWindow->setCentralWidget(trackerWidget);
     mainWindow->setWindowTitle("NDI Serial Controller");
     mainWindow->resize(0,0);
     mainWindow->show();

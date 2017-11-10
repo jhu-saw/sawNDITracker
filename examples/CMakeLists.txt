@@ -1,6 +1,5 @@
 #
-# (C) Copyright 2009-2016 Johns Hopkins University (JHU), All Rights
-# Reserved.
+# (C) Copyright 2009-2017 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -23,12 +22,18 @@ set (REQUIRED_CISST_LIBRARIES cisstCommon
                               cisstParameterTypes)
 
 # find cisst and make sure the required libraries have been compiled
-find_package (cisst REQUIRED ${REQUIRED_CISST_LIBRARIES})
+find_package (cisst 1.0.9 REQUIRED ${REQUIRED_CISST_LIBRARIES})
 
 if (cisst_FOUND)
 
   # load cisst configuration
   include (${CISST_USE_FILE})
+
+  # catkin/ROS paths
+  cisst_is_catkin_build (sawForceDimensionSDKExamples_IS_CATKIN_BUILT)
+  if (sawForceDimensionSDKExamples_IS_CATKIN_BUILT)
+    set (EXECUTABLE_OUTPUT_PATH "${CATKIN_DEVEL_PREFIX}/bin")
+  endif ()
 
   # sawNDITracker has been compiled within cisst, we should find it automatically
   find_package (sawNDITracker REQUIRED)
@@ -51,16 +56,6 @@ if (cisst_FOUND)
 
     # link against cisst libraries (and dependencies)
     cisst_target_link_libraries (sawNDITrackerQtExample ${REQUIRED_CISST_LIBRARIES})
-
-    add_custom_command (TARGET sawNDITrackerQtExample
-                        POST_BUILD
-                        COMMAND ${CMAKE_COMMAND} ARGS -E copy
-                                ${CMAKE_CURRENT_SOURCE_DIR}/configNDITracker.xml
-                                ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/configNDITracker.xml
-                        COMMAND ${CMAKE_COMMAND} ARGS -E copy
-                                ${CMAKE_CURRENT_SOURCE_DIR}/mainPython.py
-                                ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/mainPython.py
-                        COMMENT "sawNDITrackerQtExample: copying files to the executable directory")
 
   endif (sawNDITracker_FOUND)
 

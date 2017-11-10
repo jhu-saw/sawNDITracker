@@ -58,6 +58,8 @@ void mtsNDISerial::Init(void)
 
     mControllerInterface = AddInterfaceProvided("Controller");
     if (mControllerInterface) {
+        mControllerInterface->AddMessageEvents();
+        mControllerInterface->AddCommandVoid(&mtsNDISerial::Connect, this, "Connect");
         mControllerInterface->AddCommandWrite(&mtsNDISerial::Beep, this, "Beep");
         mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesInitialize, this, "PortHandlesInitialize");
         mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesQuery, this, "PortHandlesQuery");
@@ -67,87 +69,29 @@ void mtsNDISerial::Init(void)
         mControllerInterface->AddCommandReadState(StateTable, mIsTracking, "IsTracking");
         mControllerInterface->AddCommandReadState(StateTable, mTrackStrayMarkers, "TrackStrayMarkers");
         mControllerInterface->AddCommandReadState(StateTable, mStrayMarkers, "StrayMarkers");
+        mControllerInterface->AddCommandReadState(StateTable, StateTable.PeriodStats,
+                                                  "GetPeriodStatistics");
     }
+}
+
+
+void mtsNDISerial::SetSerialPort(const std::string & serialPort)
+{
+    mSerialPortName = serialPort;
 }
 
 
 void mtsNDISerial::Configure(const std::string & filename)
 {
     CMN_LOG_CLASS_INIT_VERBOSE << "Configure: using " << filename << std::endl;
+
+#if 0
     cmnXMLPath config;
     config.SetInputSource(filename);
 
     // initialize serial port
     std::string serialPort;
     config.GetXMLValue("/tracker/controller", "@port", serialPort, "");
-    if (!serialPort.empty()) {
-        mSerialPort.SetPortName(serialPort);
-        if (!mSerialPort.Open()) {
-            CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to open serial port: " << mSerialPort.GetPortName() << std::endl;
-            return;
-        }
-        if (!ResetSerialPort()) {
-            CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to reset serial port." << std::endl;
-            mSerialPort.Close();
-            return;
-        }
-    } else {
-        std::vector<std::string> ports;
-#if (CISST_OS == CISST_WINDOWS)
-        for (unsigned int i = 1; i <= 256; i++) {
-            std::ostringstream stream;
-            stream << "COM" << i;
-            ports.push_back(stream.str());
-        }
-#elif (CISST_OS == CISST_LINUX)
-        Glob("/dev/ttyS*", ports);
-        Glob("/dev/ttyUSB*", ports);
-#elif (CISST_OS == CISST_DARWIN)
-        Glob("/dev/tty*", ports);
-        Glob("/dev/cu*", ports);
-#endif
-        for (unsigned int i = 0; i < ports.size(); i++) {
-            mSerialPort.SetPortName(ports[i]);
-            CMN_LOG_CLASS_INIT_VERBOSE << "Configure: trying serial port: " << mSerialPort.GetPortName() << std::endl;
-            if (!mSerialPort.Open()) continue;
-            if (ResetSerialPort()) break;
-            mSerialPort.Close();
-        }
-    }
-
-    // increase the timeout during initialization
-    double timeout = mReadTimeout;
-    mReadTimeout = 10.0 * cmn_s;
-
-    SetSerialPortSettings(osaSerialPort::BaudRate115200,
-                          osaSerialPort::CharacterSize8,
-                          osaSerialPort::ParityCheckingNone,
-                          osaSerialPort::StopBitsOne,
-                          osaSerialPort::FlowControlNone);
-
-    // initialize NDI controller
-    CommandSend("INIT ");
-    ResponseRead("OKAY");
-
-    CommandSend("VER 0");
-    Sleep(100.0 * cmn_ms);
-    ResponseRead();
-    std::cerr << "VER 0 result:\n" << mSerialBuffer << std::endl;
-
-    CommandSend("VER 3");
-    Sleep(100.0 * cmn_ms);
-    ResponseRead();
-    std::cerr << "VER 3 result:\n" << mSerialBuffer << std::endl;
-
-    CommandSend("VER 4");
-    Sleep(100.0 * cmn_ms);
-    ResponseRead();
-    std::cerr << "VER 4 result:\n" << mSerialBuffer << std::endl;
-
-    CommandSend("VER 5");
-    Sleep(100.0 * cmn_ms);
-    ResponseRead();
-    std::cerr << "VER 5 result:\n" << mSerialBuffer << std::endl;
 
     std::string toolDefinitionsDir;
     config.GetXMLValue("/tracker/controller", "@definitions", toolDefinitionsDir, "");
@@ -201,6 +145,117 @@ void mtsNDISerial::Configure(const std::string & filename)
         }
     }
     mReadTimeout = timeout;
+
+#endif
+}
+
+void mtsNDISerial::Connect(void)
+{
+    // in case someone calls Connect multiple times
+    if (mSerialPort.IsOpened()) {
+        mSerialPort.Close();
+        mControllerInterface->SendStatus(this->GetName() + ": serial port was opened, closing first");
+    }
+
+    // first try to connect using a port name provided either in the
+    // config file or using a command line argument and the method
+    // SetSerialPort
+    if (!mSerialPortName.empty()) {
+        mSerialPort.SetPortName(mSerialPortName);
+        if (!mSerialPort.Open()) {
+            mControllerInterface->SendError(this->GetName() + ": failed to open serial port: "
+                                            + mSerialPort.GetPortName());
+            return;
+        }
+        mControllerInterface->SendStatus(this->GetName() + ": found serial port: "
+                                         + mSerialPort.GetPortName());
+        // now try to reset port
+        if (!ResetSerialPort()) {
+            mControllerInterface->SendError(this->GetName() + ": failed to reset serial port: "
+                                            + mSerialPort.GetPortName());
+            mSerialPort.Close();
+            return;
+        }
+
+    } else {
+        // this is a bit brutal, build a list of possible names
+        // depending on the OS and try them all one by one
+        mControllerInterface->SendWarning(this->GetName() + ": no serial port specified, trying to discover automatically");
+        std::vector<std::string> ports;
+#if (CISST_OS == CISST_WINDOWS)
+        for (unsigned int i = 1; i <= 256; i++) {
+            std::ostringstream stream;
+            stream << "COM" << i;
+            ports.push_back(stream.str());
+        }
+#elif (CISST_OS == CISST_LINUX)
+        Glob("/dev/ttyS*", ports);
+        Glob("/dev/ttyUSB*", ports);
+#elif (CISST_OS == CISST_DARWIN)
+        Glob("/dev/tty*", ports);
+        Glob("/dev/cu*", ports);
+#endif
+        for (size_t i = 0; i < ports.size(); i++) {
+            mSerialPort.SetPortName(ports[i]);
+            mControllerInterface->SendStatus(this->GetName() + ": trying to open serial port: "
+                                             + mSerialPort.GetPortName());
+            // try to reset only if we can open
+            if (mSerialPort.Open()) {
+                mControllerInterface->SendStatus(this->GetName() + ": trying to reset serial port: "
+                                                 + mSerialPort.GetPortName());
+                if (ResetSerialPort()) {
+                    mSerialPortName = mSerialPort.GetPortName();
+                    break;
+                }
+                mSerialPort.Close();
+            }
+        }
+    }
+
+    // if we get here we've been able to reset the device
+    mControllerInterface->SendStatus(this->GetName() + ": device found on port: "
+                                     + mSerialPort.GetPortName());
+
+    // increase the timeout during initialization
+    double timeout = mReadTimeout;
+    mReadTimeout = 10.0 * cmn_s;
+
+    SetSerialPortSettings(osaSerialPort::BaudRate115200,
+                          osaSerialPort::CharacterSize8,
+                          osaSerialPort::ParityCheckingNone,
+                          osaSerialPort::StopBitsOne,
+                          osaSerialPort::FlowControlNone);
+
+    // initialize NDI controller
+    CommandSend("INIT ");
+    if (ResponseRead("OKAY")) {
+        mControllerInterface->SendStatus(this->GetName() + ": device initialized");
+    } else {
+        mControllerInterface->SendError(this->GetName() + ": device failed to initialize");
+        return;
+    }
+
+    // get some extra information on the system for debug/log
+    CommandSend("VER 0");
+    ResponseRead();
+    mControllerInterface->SendStatus(this->GetName() + ": command VER 0 returned:\n" + mSerialBuffer);
+
+    CommandSend("VER 3");
+    ResponseRead();
+    mControllerInterface->SendStatus(this->GetName() + ": command VER 3 returned:\n" + mSerialBuffer);
+
+    CommandSend("VER 4");
+    ResponseRead();
+    mControllerInterface->SendStatus(this->GetName() + ": command VER 4 returned:\n" + mSerialBuffer);
+
+    CommandSend("VER 5");
+    if (ResponseRead("024")) {
+        mControllerInterface->SendStatus(this->GetName() + ": device firmware is 024 (supported)");
+    } else {
+        mControllerInterface->SendError(this->GetName() + ": device firmware is not what we're expecting, got: "
+                                        + mSerialBuffer);
+        return;
+    }
 }
 
 
@@ -482,7 +537,7 @@ bool mtsNDISerial::SetSerialPortSettings(osaSerialPort::BaudRateType baudRate,
     }
 
     if (!CommandSend()) {
-        CMN_LOG_CLASS_INIT_ERROR << "SetSerialPortSettings: failed to send command" << std::endl;
+        mControllerInterface->SendError(this->GetName() + ": SetSerialPortSettings: failed to send command");
         return false;
     }
 
@@ -495,9 +550,10 @@ bool mtsNDISerial::SetSerialPortSettings(osaSerialPort::BaudRateType baudRate,
         mSerialPort.SetFlowControl(flowControl);
         mSerialPort.Configure();
         Sleep(200.0 * cmn_ms);
+        mControllerInterface->SendStatus(this->GetName() + ": SetSerialPortSettings succeeded");
         return true;
     }
-    CMN_LOG_CLASS_INIT_ERROR << "SetSerialPortSettings: didn't receive \"OKAY\"" << std::endl;
+    mControllerInterface->SendError(this->GetName() + ": SetSerialPortSettings: didn't receive \"OKAY\"");
     return false;
 }
 

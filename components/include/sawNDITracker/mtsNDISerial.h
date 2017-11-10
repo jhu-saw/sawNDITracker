@@ -96,7 +96,16 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     }
     ~mtsNDISerial(void) {};
 
-    void Init(void);
+    /*! Set the name of the serial port to use.  If the serial port is
+      defined using this method the field "port" in the
+      configuration file will be ignored. */
+    void SetSerialPort(const std::string & serialPort);
+
+    /*! Configure the tracker using a JSON file.  Configure will
+      create the tools provided interfaces and save the settings
+      (serial number, rom... but will not check if these are valid.
+      Port search and rom loading will happen when first
+      connected. */
     void Configure(const std::string & filename = "");
     inline void Startup(void) {};
     void Run(void);
@@ -107,6 +116,8 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     }
     std::string GetToolName(const size_t index) const;
 
+    void Connect(void);
+
     void PortHandlesInitialize(void);
     void PortHandlesQuery(void);
     void PortHandlesEnable(void);
@@ -114,6 +125,8 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
  protected:
     enum { MAX_BUFFER_SIZE = 512 };
     enum { CRC_SIZE = 4 };
+
+    void Init(void);
 
     inline size_t GetSerialBufferSize(void) const {
         return mSerialBufferPointer - mSerialBuffer;
@@ -138,7 +151,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     void CommandAppend(const char * command);
     void CommandAppend(const int command);
     bool CommandSend(void);
-    
+
     inline bool CommandSend(const char * command) {
         CommandInitialize();
         CommandAppend(command);
@@ -169,6 +182,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
 
     mtsInterfaceProvided * mControllerInterface;
 
+    std::string mSerialPortName;
     osaSerialPort mSerialPort;
     char mSerialBuffer[MAX_BUFFER_SIZE];
     char * mSerialBufferPointer;
