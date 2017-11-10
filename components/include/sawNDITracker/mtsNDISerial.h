@@ -2,7 +2,6 @@
 /* ex: set filetype=cpp softtabstop=4 shiftwidth=4 tabstop=4 cindent expandtab: */
 
 /*
-
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
@@ -86,22 +85,27 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     };
 
  public:
-    mtsNDISerial(const std::string & taskName, const double period) :
-        mtsTaskPeriodic(taskName, period, false, 5000) { Construct(); }
-    mtsNDISerial(const mtsTaskPeriodicConstructorArg & arg) :
-        mtsTaskPeriodic(arg) { Construct(); }
+    inline mtsNDISerial(const std::string & taskName, const double period):
+        mtsTaskPeriodic(taskName, period, false, 5000) {
+        Init();
+    }
+
+    inline mtsNDISerial(const mtsTaskPeriodicConstructorArg & arg):
+        mtsTaskPeriodic(arg) {
+        Init();
+    }
     ~mtsNDISerial(void) {};
 
-    void Construct(void);
+    void Init(void);
     void Configure(const std::string & filename = "");
-    void Startup(void) {};
+    inline void Startup(void) {};
     void Run(void);
     void Cleanup(void);
 
-    size_t GetNumberOfTools(void) const {
-        return Tools.size();
+    inline size_t GetNumberOfTools(void) const {
+        return mTools.size();
     }
-    std::string GetToolName(const unsigned int index) const;
+    std::string GetToolName(const size_t index) const;
 
     void PortHandlesInitialize(void);
     void PortHandlesQuery(void);
@@ -111,18 +115,18 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     enum { MAX_BUFFER_SIZE = 512 };
     enum { CRC_SIZE = 4 };
 
-    size_t GetSerialBufferSize(void) const {
-        return SerialBufferPointer - SerialBuffer;
+    inline size_t GetSerialBufferSize(void) const {
+        return mSerialBufferPointer - mSerialBuffer;
     }
-    size_t GetSerialBufferAvailableSize(void) const {
+    inline size_t GetSerialBufferAvailableSize(void) const {
         return MAX_BUFFER_SIZE - GetSerialBufferSize();
     }
 
-    size_t GetSerialBufferStringSize(void) const {
+    inline size_t GetSerialBufferStringSize(void) const {
         if (GetSerialBufferSize() == 0)  {
             CMN_LOG_CLASS_RUN_ERROR << "GetSerialBufferStringSize: string is empty and not null terminated" << std::endl;
             return 0;
-        } else if (*(SerialBufferPointer - 1) == '\0') {
+        } else if (*(mSerialBufferPointer - 1) == '\0') {
             return GetSerialBufferSize() - 1;
         }
         CMN_LOG_CLASS_RUN_ERROR << "GetSerialBufferStringSize: string is not null terminated" << std::endl;
@@ -134,7 +138,8 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     void CommandAppend(const char * command);
     void CommandAppend(const int command);
     bool CommandSend(void);
-    bool CommandSend(const char * command) {
+    
+    inline bool CommandSend(const char * command) {
         CommandInitialize();
         CommandAppend(command);
         return CommandSend();
@@ -160,23 +165,24 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     void ToggleTracking(const bool & track);
     void ToggleStrayMarkers(const bool & stray);
     void Track(void);
-    void CalibratePivot(const std::string & toolName);
     void ReportStrayMarkers(void);
 
-    osaSerialPort SerialPort;
-    char SerialBuffer[MAX_BUFFER_SIZE];
-    char * SerialBufferPointer;
+    mtsInterfaceProvided * mControllerInterface;
+
+    osaSerialPort mSerialPort;
+    char mSerialBuffer[MAX_BUFFER_SIZE];
+    char * mSerialBufferPointer;
 
     typedef cmnNamedMap<Tool> ToolsType;
-    ToolsType Tools;
-    cmnNamedMap<Tool> PortToTool;
+    ToolsType mTools;
+    cmnNamedMap<Tool> mPortToTool;
 
-    bool IsTracking;
-    bool TrackStrayMarkers;
-    mtsMatrix<double> StrayMarkers;      
+    bool mIsTracking;
+    bool mTrackStrayMarkers;
+    mtsMatrix<double> mStrayMarkers;
 
-    double ReadTimeout;
-    osaStopwatch ResponseTimer;
+    double mReadTimeout;
+    osaStopwatch mResponseTimer;
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsNDISerial);

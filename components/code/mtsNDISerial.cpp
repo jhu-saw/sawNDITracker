@@ -21,12 +21,8 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstCommon/cmnStrings.h>
 #include <cisstCommon/cmnXMLPath.h>
 #include <cisstVector/vctDynamicMatrixTypes.h>
-#include <cisstOSAbstraction/osaSleep.h>
+
 #include <cisstMultiTask/mtsInterfaceProvided.h>
-#include <cisstNumerical/nmrConfig.h>     // for CISST_HAS_CISSTNETLIB
-#if CISST_HAS_CISSTNETLIB
-    #include <cisstNumerical/nmrLSSolver.h>
-#endif
 #include <sawNDITracker/mtsNDISerial.h>
 
 CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsNDISerial, mtsTaskPeriodic, mtsTaskPeriodicConstructorArg);
@@ -46,38 +42,32 @@ inline bool Glob(const std::string & pattern, std::vector<std::string> & paths) 
 #endif
 
 
-void mtsNDISerial::Construct(void)
+void mtsNDISerial::Init(void)
 {
-    ReadTimeout = 2.0 * cmn_s;
-    IsTracking = false;
-    TrackStrayMarkers = false;
-    StrayMarkers.SetSize(50, 5);
-    StrayMarkers.Zeros();
-    memset(SerialBuffer, 0, MAX_BUFFER_SIZE);
-    SerialBufferPointer = SerialBuffer;
+    mReadTimeout = 2.0 * cmn_s;
+    mIsTracking = false;
+    mTrackStrayMarkers = true;
+    mStrayMarkers.SetSize(50, 5);
+    mStrayMarkers.Zeros();
+    memset(mSerialBuffer, 0, MAX_BUFFER_SIZE);
+    mSerialBufferPointer = mSerialBuffer;
 
-    StateTable.AddData(IsTracking, "IsTracking");
-    StateTable.AddData(TrackStrayMarkers, "TrackStrayMarkers");
-    StateTable.AddData(StrayMarkers, "StrayMarkers");
+    StateTable.AddData(mIsTracking, "IsTracking");
+    StateTable.AddData(mTrackStrayMarkers, "TrackStrayMarkers");
+    StateTable.AddData(mStrayMarkers, "StrayMarkers");
 
-    mtsInterfaceProvided * provided = AddInterfaceProvided("Controller");
-    if (provided) {
-        provided->AddCommandWrite(&mtsNDISerial::Beep, this, "Beep");
-        provided->AddCommandVoid(&mtsNDISerial::PortHandlesInitialize, this, "PortHandlesInitialize");
-        provided->AddCommandVoid(&mtsNDISerial::PortHandlesQuery, this, "PortHandlesQuery");
-        provided->AddCommandVoid(&mtsNDISerial::PortHandlesEnable, this, "PortHandlesEnable");
-        provided->AddCommandWrite(&mtsNDISerial::CalibratePivot, this, "CalibratePivot");
-        provided->AddCommandVoid(&mtsNDISerial::ReportStrayMarkers, this, "ReportStrayMarkers");
-        provided->AddCommandWrite(&mtsNDISerial::ToggleTracking, this, "ToggleTracking");
-        provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
-        provided->AddCommandReadState(StateTable, TrackStrayMarkers, "TrackStrayMarkers");
-        provided->AddCommandReadState(StateTable, StrayMarkers, "StrayMarkers");
+    mControllerInterface = AddInterfaceProvided("Controller");
+    if (mControllerInterface) {
+        mControllerInterface->AddCommandWrite(&mtsNDISerial::Beep, this, "Beep");
+        mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesInitialize, this, "PortHandlesInitialize");
+        mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesQuery, this, "PortHandlesQuery");
+        mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesEnable, this, "PortHandlesEnable");
+        mControllerInterface->AddCommandVoid(&mtsNDISerial::ReportStrayMarkers, this, "ReportStrayMarkers");
+        mControllerInterface->AddCommandWrite(&mtsNDISerial::ToggleTracking, this, "ToggleTracking");
+        mControllerInterface->AddCommandReadState(StateTable, mIsTracking, "IsTracking");
+        mControllerInterface->AddCommandReadState(StateTable, mTrackStrayMarkers, "TrackStrayMarkers");
+        mControllerInterface->AddCommandReadState(StateTable, mStrayMarkers, "StrayMarkers");
     }
-
-#if !CISST_HAS_CISSTNETLIB
-    CMN_LOG_CLASS_RUN_WARNING << "Construct: CalibratePivot requires cisstNetlib which is missing" << std::endl;
-#endif
-
 }
 
 
@@ -91,14 +81,14 @@ void mtsNDISerial::Configure(const std::string & filename)
     std::string serialPort;
     config.GetXMLValue("/tracker/controller", "@port", serialPort, "");
     if (!serialPort.empty()) {
-        SerialPort.SetPortName(serialPort);
-        if (!SerialPort.Open()) {
-            CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to open serial port: " << SerialPort.GetPortName() << std::endl;
+        mSerialPort.SetPortName(serialPort);
+        if (!mSerialPort.Open()) {
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to open serial port: " << mSerialPort.GetPortName() << std::endl;
             return;
         }
         if (!ResetSerialPort()) {
             CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to reset serial port." << std::endl;
-            SerialPort.Close();
+            mSerialPort.Close();
             return;
         }
     } else {
@@ -117,17 +107,17 @@ void mtsNDISerial::Configure(const std::string & filename)
         Glob("/dev/cu*", ports);
 #endif
         for (unsigned int i = 0; i < ports.size(); i++) {
-            SerialPort.SetPortName(ports[i]);
-            CMN_LOG_CLASS_INIT_VERBOSE << "Configure: trying serial port: " << SerialPort.GetPortName() << std::endl;
-            if (!SerialPort.Open()) continue;
+            mSerialPort.SetPortName(ports[i]);
+            CMN_LOG_CLASS_INIT_VERBOSE << "Configure: trying serial port: " << mSerialPort.GetPortName() << std::endl;
+            if (!mSerialPort.Open()) continue;
             if (ResetSerialPort()) break;
-            SerialPort.Close();
+            mSerialPort.Close();
         }
     }
 
     // increase the timeout during initialization
-    double timeout = this->ReadTimeout;
-    ReadTimeout = 10.0 * cmn_s;
+    double timeout = mReadTimeout;
+    mReadTimeout = 10.0 * cmn_s;
 
     SetSerialPortSettings(osaSerialPort::BaudRate115200,
                           osaSerialPort::CharacterSize8,
@@ -138,6 +128,26 @@ void mtsNDISerial::Configure(const std::string & filename)
     // initialize NDI controller
     CommandSend("INIT ");
     ResponseRead("OKAY");
+
+    CommandSend("VER 0");
+    Sleep(100.0 * cmn_ms);
+    ResponseRead();
+    std::cerr << "VER 0 result:\n" << mSerialBuffer << std::endl;
+
+    CommandSend("VER 3");
+    Sleep(100.0 * cmn_ms);
+    ResponseRead();
+    std::cerr << "VER 3 result:\n" << mSerialBuffer << std::endl;
+
+    CommandSend("VER 4");
+    Sleep(100.0 * cmn_ms);
+    ResponseRead();
+    std::cerr << "VER 4 result:\n" << mSerialBuffer << std::endl;
+
+    CommandSend("VER 5");
+    Sleep(100.0 * cmn_ms);
+    ResponseRead();
+    std::cerr << "VER 5 result:\n" << mSerialBuffer << std::endl;
 
     std::string toolDefinitionsDir;
     config.GetXMLValue("/tracker/controller", "@definitions", toolDefinitionsDir, "");
@@ -190,7 +200,7 @@ void mtsNDISerial::Configure(const std::string & filename)
             }
         }
     }
-    this->ReadTimeout = timeout;
+    mReadTimeout = timeout;
 }
 
 
@@ -198,7 +208,7 @@ void mtsNDISerial::Run(void)
 {
     ProcessQueuedCommands();
 
-    if (IsTracking) {
+    if (mIsTracking) {
         Track();
     }
 }
@@ -207,7 +217,7 @@ void mtsNDISerial::Run(void)
 void mtsNDISerial::Cleanup(void)
 {
     ToggleTracking(false);
-    if (!SerialPort.Close()) {
+    if (!mSerialPort.Close()) {
         CMN_LOG_CLASS_INIT_ERROR << "Cleanup: failed to close serial port" << std::endl;
     }
 }
@@ -215,28 +225,28 @@ void mtsNDISerial::Cleanup(void)
 
 void mtsNDISerial::CommandInitialize(void)
 {
-    SerialBufferPointer = SerialBuffer;
+    mSerialBufferPointer = mSerialBuffer;
 }
 
 
 void mtsNDISerial::CommandAppend(const char command)
 {
-    *SerialBufferPointer = command;
-    SerialBufferPointer++;
+    *mSerialBufferPointer = command;
+    mSerialBufferPointer++;
 }
 
 
 void mtsNDISerial::CommandAppend(const char * command)
 {
     const size_t size = strlen(command);
-    strncpy(SerialBufferPointer, command, size);
-    SerialBufferPointer += size;
+    strncpy(mSerialBufferPointer, command, size);
+    mSerialBufferPointer += size;
 }
 
 
 void mtsNDISerial::CommandAppend(const int command)
 {
-    SerialBufferPointer += cmn_snprintf(SerialBufferPointer, GetSerialBufferAvailableSize(), "%d", command);
+    mSerialBufferPointer += cmn_snprintf(mSerialBufferPointer, GetSerialBufferAvailableSize(), "%d", command);
 }
 
 
@@ -269,36 +279,41 @@ bool mtsNDISerial::CommandSend(void)
     CommandAppend('\r');
     CommandAppend('\0');
 
-    const int bytesToSend = static_cast<int>(strlen(SerialBuffer));
-    const int bytesSent = SerialPort.Write(SerialBuffer, bytesToSend);
+    const int bytesToSend = static_cast<int>(strlen(mSerialBuffer));
+    const int bytesSent = mSerialPort.Write(mSerialBuffer, bytesToSend);
     if (bytesSent != bytesToSend) {
         CMN_LOG_CLASS_RUN_ERROR << "SendCommand: sent only " << bytesSent << " of " << bytesToSend
-                                << " for command \"" << SerialBuffer << "\"" << std::endl;
+                                << " for command \"" << mSerialBuffer << "\"" << std::endl;
         return false;
     }
-    CMN_LOG_CLASS_RUN_DEBUG << "SendCommand: successfully sent command \"" << SerialBuffer << "\"" << std::endl;
+    CMN_LOG_CLASS_RUN_DEBUG << "SendCommand: successfully sent command \""
+                            << mSerialBuffer << "\"" << std::endl;
     return true;
 }
 
 
 bool mtsNDISerial::ResponseRead(void)
 {
-    ResponseTimer.Reset();
-    ResponseTimer.Start();
+    mResponseTimer.Reset();
+    mResponseTimer.Start();
 
-    SerialBufferPointer = SerialBuffer;
+    mSerialBufferPointer = mSerialBuffer;
 
     bool receivedMessage = false;
     do {
-        int bytesRead = SerialPort.Read(SerialBufferPointer, static_cast<int>(GetSerialBufferAvailableSize()));
-        SerialBufferPointer += bytesRead;
-        receivedMessage = (GetSerialBufferSize() > 0) && (*(SerialBufferPointer - 1) == '\r');
-    } while ((ResponseTimer.GetElapsedTime() < ReadTimeout) && !receivedMessage);
+        int bytesRead = mSerialPort.Read(mSerialBufferPointer,
+                                         static_cast<int>(GetSerialBufferAvailableSize()));
+        mSerialBufferPointer += bytesRead;
+        receivedMessage = (GetSerialBufferSize() > 0)
+            && (*(mSerialBufferPointer - 1) == '\r');
+    } while ((mResponseTimer.GetElapsedTime() < mReadTimeout)
+             && !receivedMessage);
 
-    ResponseTimer.Stop();
+    mResponseTimer.Stop();
 
-    if (ResponseTimer.GetElapsedTime() > ReadTimeout) {
-        CMN_LOG_CLASS_RUN_ERROR << "ResponseRead: read command timed out (timeout is " << ReadTimeout << "s)" << std::endl;
+    if (mResponseTimer.GetElapsedTime() > mReadTimeout) {
+        CMN_LOG_CLASS_RUN_ERROR << "ResponseRead: read command timed out (timeout is "
+                                << mReadTimeout << "s)" << std::endl;
         return false;
     }
 
@@ -316,9 +331,9 @@ bool mtsNDISerial::ResponseRead(const char * expectedMessage)
         return false;
     }
 
-    if (strncmp(expectedMessage, SerialBuffer, GetSerialBufferStringSize()) != 0) {
+    if (strncmp(expectedMessage, mSerialBuffer, GetSerialBufferStringSize()) != 0) {
         CMN_LOG_CLASS_RUN_ERROR << "ResponseRead: expected \"" << expectedMessage
-                                << "\", but received \"" << SerialBuffer << "\"" << std::endl;
+                                << "\", but received \"" << mSerialBuffer << "\"" << std::endl;
         return false;
     }
     CMN_LOG_CLASS_RUN_DEBUG << "ResponseRead: received expected response" << std::endl;
@@ -330,52 +345,52 @@ bool mtsNDISerial::ResponseCheckCRC(void)
 {
     char receivedCRC[CRC_SIZE + 1];
     char computedCRC[CRC_SIZE + 1];
-    char * crcPointer = SerialBufferPointer - (CRC_SIZE + 1);  // +1 for '\r'
+    char * crcPointer = mSerialBufferPointer - (CRC_SIZE + 1);  // +1 for '\r'
 
     // extract CRC from buffer
     strncpy(receivedCRC, crcPointer, CRC_SIZE);
     receivedCRC[CRC_SIZE] = '\0';
     *crcPointer = '\0';
-    SerialBufferPointer = crcPointer + 1;
+    mSerialBufferPointer = crcPointer + 1;
 
     // compute CRC
-    sprintf(computedCRC, "%04X", ComputeCRC(SerialBuffer));
+    sprintf(computedCRC, "%04X", ComputeCRC(mSerialBuffer));
     computedCRC[CRC_SIZE] = '\0';
 
     // compare CRCs
     if (strncmp(receivedCRC, computedCRC, CRC_SIZE) != 0) {
-        CMN_LOG_CLASS_RUN_ERROR << "ResponseCheckCRC: received \"" << SerialBuffer << receivedCRC
+        CMN_LOG_CLASS_RUN_ERROR << "ResponseCheckCRC: received \"" << mSerialBuffer << receivedCRC
                                 << "\", but computed \"" << computedCRC << "\" for CRC" << std::endl;
         return false;
     }
-    CMN_LOG_CLASS_RUN_DEBUG << "ResponseCheckCRC: CRC check was successful for \"" << SerialBuffer << "\"" << std::endl;
+    CMN_LOG_CLASS_RUN_DEBUG << "ResponseCheckCRC: CRC check was successful for \"" << mSerialBuffer << "\"" << std::endl;
     return true;
 }
 
 
 bool mtsNDISerial::ResetSerialPort(void)
 {
-    SerialPort.SetBaudRate(osaSerialPort::BaudRate9600);
-    SerialPort.SetCharacterSize(osaSerialPort::CharacterSize8);
-    SerialPort.SetParityChecking(osaSerialPort::ParityCheckingNone);
-    SerialPort.SetStopBits(osaSerialPort::StopBitsOne);
-    SerialPort.SetFlowControl(osaSerialPort::FlowControlNone);
-    SerialPort.Configure();
+    mSerialPort.SetBaudRate(osaSerialPort::BaudRate9600);
+    mSerialPort.SetCharacterSize(osaSerialPort::CharacterSize8);
+    mSerialPort.SetParityChecking(osaSerialPort::ParityCheckingNone);
+    mSerialPort.SetStopBits(osaSerialPort::StopBitsOne);
+    mSerialPort.SetFlowControl(osaSerialPort::FlowControlNone);
+    mSerialPort.Configure();
 
     const double breakTime = 0.5 * cmn_s;
-    SerialPort.WriteBreak(breakTime);
+    mSerialPort.WriteBreak(breakTime);
     // wait for length of break and a bit more
-    osaSleep(breakTime + 0.5 * cmn_s);
+    Sleep(breakTime + 0.5 * cmn_s);
 
     // temporary increase timeout to leave time for the system to boot
-    const double previousReadTimeout = this->ReadTimeout;
-    this->ReadTimeout = 10.0 * cmn_s;
+    const double previousReadTimeout = mReadTimeout;
+    mReadTimeout = 10.0 * cmn_s;
     if (!ResponseRead("RESET")) {
         CMN_LOG_CLASS_INIT_ERROR << "ResetSerialPort: failed to reset" << std::endl;
-        this->ReadTimeout = previousReadTimeout;
+        mReadTimeout = previousReadTimeout;
         return false;
     }
-    this->ReadTimeout = previousReadTimeout;
+    mReadTimeout = previousReadTimeout;
     return true;
 }
 
@@ -472,14 +487,14 @@ bool mtsNDISerial::SetSerialPortSettings(osaSerialPort::BaudRateType baudRate,
     }
 
     if (ResponseRead("OKAY")) {
-        osaSleep(200.0 * cmn_ms);
-        SerialPort.SetBaudRate(baudRate);
-        SerialPort.SetCharacterSize(characterSize);
-        SerialPort.SetParityChecking(parityChecking);
-        SerialPort.SetStopBits(stopBits);
-        SerialPort.SetFlowControl(flowControl);
-        SerialPort.Configure();
-        osaSleep(200.0 * cmn_ms);
+        Sleep(200.0 * cmn_ms);
+        mSerialPort.SetBaudRate(baudRate);
+        mSerialPort.SetCharacterSize(characterSize);
+        mSerialPort.SetParityChecking(parityChecking);
+        mSerialPort.SetStopBits(stopBits);
+        mSerialPort.SetFlowControl(flowControl);
+        mSerialPort.Configure();
+        Sleep(200.0 * cmn_ms);
         return true;
     }
     CMN_LOG_CLASS_INIT_ERROR << "SetSerialPortSettings: didn't receive \"OKAY\"" << std::endl;
@@ -498,14 +513,15 @@ void mtsNDISerial::Beep(const int & numberOfBeeps)
         CommandAppend("BEEP ");
         CommandAppend(numberOfBeeps);
         CommandSend();
-        osaSleep(100.0 * cmn_ms);
+        Sleep(100.0 * cmn_ms);
         if (!ResponseRead()) {
             return;
         }
-    } while (strncmp("0", SerialBuffer, 1) == 0);
+    } while (strncmp("0", mSerialBuffer, 1) == 0);
 
-    if (strncmp("1", SerialBuffer, 1) != 0) {
-        CMN_LOG_CLASS_RUN_ERROR << "Beep: unknown response received: " << SerialBuffer << std::endl;
+    if (strncmp("1", mSerialBuffer, 1) != 0) {
+        CMN_LOG_CLASS_RUN_ERROR << "Beep: unknown response received: "
+                                << mSerialBuffer << std::endl;
     }
 }
 
@@ -557,9 +573,11 @@ void mtsNDISerial::LoadToolDefinitionFile(const char * portHandle, const char * 
 
 mtsNDISerial::Tool * mtsNDISerial::CheckTool(const char * serialNumber)
 {
-    const ToolsType::const_iterator end = Tools.end();
+    const ToolsType::const_iterator end = mTools.end();
     ToolsType::const_iterator toolIterator;
-    for (toolIterator = Tools.begin(); toolIterator != end; ++toolIterator) {
+    for (toolIterator = mTools.begin();
+         toolIterator != end;
+         ++toolIterator) {
         if (strncmp(toolIterator->second->SerialNumber, serialNumber, 8) == 0) {
             CMN_LOG_CLASS_INIT_DEBUG << "CheckTool: found existing tool for serial number: " << serialNumber << std::endl;
             return toolIterator->second;
@@ -581,7 +599,7 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name, const char 
         tool->Name = name;
         strncpy(tool->SerialNumber, serialNumber, 8);
 
-        if (!Tools.AddItem(tool->Name, tool, CMN_LOG_LEVEL_INIT_ERROR)) {
+        if (!mTools.AddItem(tool->Name, tool, CMN_LOG_LEVEL_INIT_ERROR)) {
             CMN_LOG_CLASS_INIT_ERROR << "AddTool: no tool created, duplicate name exists: " << name << std::endl;
             delete tool;
             return 0;
@@ -611,7 +629,7 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name, const char 
     // request port handle for wireless tool
     CommandSend("PHRQ *********1****");
     if (ResponseRead()) {
-        sscanf(SerialBuffer, "%2c", portHandle);
+        sscanf(mSerialBuffer, "%2c", portHandle);
         CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: loading " << name << " on port " << portHandle << std::endl;
         LoadToolDefinitionFile(portHandle, toolDefinitionFile);
         toolPtr = AddTool(name, serialNumber);
@@ -622,14 +640,14 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name, const char 
 }
 
 
-std::string mtsNDISerial::GetToolName(const unsigned int index) const
+std::string mtsNDISerial::GetToolName(const size_t index) const
 {
-    ToolsType::const_iterator toolIterator = Tools.begin();
-    if (index >= Tools.size()) {
+    ToolsType::const_iterator toolIterator = mTools.begin();
+    if (index >= mTools.size()) {
         CMN_LOG_CLASS_RUN_ERROR << "GetToolName: requested index is out of range" << std::endl;
         return "";
     }
-    for (unsigned int i = 0; i < index; i++) {
+    for (size_t i = 0; i < index; i++) {
         toolIterator++;
     }
     return toolIterator->first;
@@ -645,7 +663,7 @@ void mtsNDISerial::PortHandlesInitialize(void)
     // are there port handles to be freed?
     CommandSend("PHSR 01");
     ResponseRead();
-    parsePointer = SerialBuffer;
+    parsePointer = mSerialBuffer;
     sscanf(parsePointer, "%02X", &numPortHandles);
     parsePointer += 2;
     portHandles.resize(numPortHandles);
@@ -666,7 +684,7 @@ void mtsNDISerial::PortHandlesInitialize(void)
     // are there port handles to be initialized?
     CommandSend("PHSR 02");
     ResponseRead();
-    parsePointer = SerialBuffer;
+    parsePointer = mSerialBuffer;
     sscanf(parsePointer, "%02X", &numPortHandles);
     parsePointer += 2;
     portHandles.resize(numPortHandles);
@@ -694,7 +712,7 @@ void mtsNDISerial::PortHandlesQuery(void)
 
     CommandSend("PHSR 00");
     ResponseRead();
-    parsePointer = SerialBuffer;
+    parsePointer = mSerialBuffer;
     sscanf(parsePointer, "%02X", &numPortHandles);
     parsePointer += 2;
     CMN_LOG_CLASS_INIT_DEBUG << "PortHandlesQuery: " << numPortHandles << " tools are plugged in" << std::endl;
@@ -707,7 +725,7 @@ void mtsNDISerial::PortHandlesQuery(void)
 
     Tool * tool;
     std::string toolKey;
-    PortToTool.clear();
+    mPortToTool.clear();
     char mainType[3];
     mainType[2] = '\0';
     char serialNumber[9];
@@ -721,7 +739,7 @@ void mtsNDISerial::PortHandlesQuery(void)
         CommandAppend("0021");  // 21 = 1 || 20
         CommandSend();
         ResponseRead();
-        sscanf(SerialBuffer, "%2c%*1c%*1c%*2c%*2c%*12c%*3c%8c%*2c%*8c%*2c%*2c%2c",
+        sscanf(mSerialBuffer, "%2c%*1c%*1c%*2c%*2c%*12c%*3c%8c%*2c%*8c%*2c%*2c%2c",
                mainType, serialNumber, channel);
 
         // create a unique pseudo-serialNumber to differentiate the second channel of Dual 5-DoF tools (Aurora only)
@@ -732,7 +750,7 @@ void mtsNDISerial::PortHandlesQuery(void)
         /// \todo This is a workaround for an issue using the USB port on the latest Aurora
         if (strncmp(serialNumber, "00000000", 8) == 0) {
             CMN_LOG_CLASS_INIT_DEBUG << "PortHandlesQuery: received serial number of all zeros, skipping this tool and trying again" << std::endl;
-            osaSleep(0.5 * cmn_s);
+            Sleep(0.5 * cmn_s);
             PortHandlesInitialize();
             PortHandlesQuery();
             return;
@@ -746,14 +764,14 @@ void mtsNDISerial::PortHandlesQuery(void)
         }
 
         // update tool information
-        sscanf(SerialBuffer, "%2c%*1X%*1X%*2c%*2c%12c%3c%*8c%*2c%20c",
+        sscanf(mSerialBuffer, "%2c%*1X%*1X%*2c%*2c%12c%3c%*8c%*2c%20c",
                tool->MainType, tool->ManufacturerID, tool->ToolRevision, tool->PartNumber);
         strncpy(tool->PortHandle, portHandles[i].Pointer(), 2);
 
         // associate the tool to its port handle
         toolKey = portHandles[i].Pointer();
         CMN_LOG_CLASS_INIT_VERBOSE << "PortHandlesQuery: associating " << tool->Name << " to port handle " << tool->PortHandle << std::endl;
-        PortToTool.AddItem(toolKey, tool, CMN_LOG_LEVEL_INIT_ERROR);
+        mPortToTool.AddItem(toolKey, tool, CMN_LOG_LEVEL_INIT_ERROR);
 
         CMN_LOG_CLASS_INIT_DEBUG << "PortHandlesQuery:\n"
                                  << " * Port Handle: " << tool->PortHandle << "\n"
@@ -774,7 +792,7 @@ void mtsNDISerial::PortHandlesEnable(void)
 
     CommandSend("PHSR 03");
     ResponseRead();
-    parsePointer = SerialBuffer;
+    parsePointer = mSerialBuffer;
     sscanf(parsePointer, "%02X", &numPortHandles);
     parsePointer += 2;
     portHandles.resize(numPortHandles);
@@ -790,7 +808,7 @@ void mtsNDISerial::PortHandlesEnable(void)
 
         Tool * tool;
         std::string toolKey = portHandles[i].Pointer();
-        tool = PortToTool.GetItem(toolKey);
+        tool = mPortToTool.GetItem(toolKey);
         if (!tool) {
             CMN_LOG_CLASS_RUN_ERROR << "PortHandlesEnable: no tool for port handle: " << toolKey << std::endl;
             return;
@@ -819,23 +837,23 @@ void mtsNDISerial::PortHandlesEnable(void)
 
 void mtsNDISerial::ToggleTracking(const bool & track)
 {
-    if (track && !IsTracking) {
+    if (track && !mIsTracking) {
         CMN_LOG_CLASS_INIT_VERBOSE << "ToggleTracking: tracking is on" << std::endl;
         CommandSend("TSTART 80");
-    } else if (!track && IsTracking) {
+    } else if (!track && mIsTracking) {
         CMN_LOG_CLASS_INIT_VERBOSE << "ToggleTracking: tracking is off" << std::endl;
         CommandSend("TSTOP ");
     } else {
         return;
     }
-    IsTracking = !IsTracking;
+    mIsTracking = !mIsTracking;
     ResponseRead("OKAY");
-    osaSleep(0.5 * cmn_s);
+    Sleep(0.5 * cmn_s);
 }
 
 void mtsNDISerial::ToggleStrayMarkers(const bool & stray)
-{    
-    TrackStrayMarkers = stray;
+{
+    mTrackStrayMarkers = stray;
 }
 
 void mtsNDISerial::Track(void)
@@ -851,16 +869,14 @@ void mtsNDISerial::Track(void)
     vct3 toolPosition;
     vctFrm3 tooltipPosition;
 
-    if(!TrackStrayMarkers)
-    {
+    if (!mTrackStrayMarkers) {
         CommandSend("TX 0001");
-    }
-    else
-    {
+    } else {
         CommandSend("TX 1001");
     }
     ResponseRead();
-    parsePointer = SerialBuffer;
+    // std::cerr << SerialBuffer << std::endl
+    parsePointer = mSerialBuffer;
     sscanf(parsePointer, "%02X", &numPortHandles);
     parsePointer += 2;
     CMN_LOG_CLASS_RUN_DEBUG << "Track: tracking " << numPortHandles << " tools" << std::endl;
@@ -868,7 +884,7 @@ void mtsNDISerial::Track(void)
         sscanf(parsePointer, "%2c", portHandle);
         parsePointer += 2;
         toolKey = portHandle;
-        tool = PortToTool.GetItem(toolKey);
+        tool = mPortToTool.GetItem(toolKey);
         if (!tool) {
             CMN_LOG_CLASS_RUN_ERROR << "Track: no tool for port handle: " << toolKey << std::endl;
             return;
@@ -911,7 +927,7 @@ void mtsNDISerial::Track(void)
             tool->TooltipPosition.Position() = tooltipPosition;  // Tool Tip Position = Orientation + Tooltip
             tool->TooltipPosition.SetValid(true);
 
-            CMN_LOG_CLASS_RUN_DEBUG << "Track: " << tool->Name << " is at:\n" << tooltipPosition << std::endl;
+            std::cerr << "Track: " << tool->Name << " is at:\n" << tooltipPosition << std::endl;
         }
         sscanf(parsePointer, "%08X", &(tool->FrameNumber));
         parsePointer += 8;
@@ -923,12 +939,11 @@ void mtsNDISerial::Track(void)
         parsePointer += 1;  // skip line feed (LF)
     }
 
-    if(TrackStrayMarkers)
-    {
+    if (mTrackStrayMarkers) {
         // read number of stray markers
         sscanf(parsePointer, "%02X", &numMarkers);
         parsePointer += 2;
-        CMN_LOG_CLASS_RUN_DEBUG << "Track: " << numMarkers << " stray markers detected" << std::endl;
+        //     std::cerr << "Track: " << numMarkers << " stray markers detected" << std::endl;
 
         // read "out of volume" reply (see, API documentation for "Reply Option 1000" if this section seems convoluted)
         unsigned int outOfVolumeReplySize = static_cast<unsigned int>(ceil(numMarkers / 4.0));
@@ -945,8 +960,8 @@ void mtsNDISerial::Track(void)
 
         // read marker positions
         std::vector<vct3> markerPositions(numMarkers);
-        std::vector<bool> markerVisibilities(numMarkers);        
-        StrayMarkers.Zeros();
+        std::vector<bool> markerVisibilities(numMarkers);
+        mStrayMarkers.Zeros();
         for (unsigned int i = 0; i < numMarkers; i++) {
             sscanf(parsePointer, "%7lf%7lf%7lf",
                    &(markerPositions[i].X()), &(markerPositions[i].Y()), &(markerPositions[i].Z()));
@@ -954,90 +969,18 @@ void mtsNDISerial::Track(void)
             markerPositions[i].Divide(100.0);  // handle the implied decimal point
             markerVisibilities[i] = outOfVolumeReply[i + numGarbageBits];  // handle garbage bits in reply
 
-            StrayMarkers[i][0] = 1.0;  // if a marker is encountered
-            StrayMarkers[i][1] = markerVisibilities[i];  // if marker is NOT out of volume
-            StrayMarkers[i][2] = markerPositions[i].X();
-            StrayMarkers[i][3] = markerPositions[i].Y();
-            StrayMarkers[i][4] = markerPositions[i].Z();
+            mStrayMarkers[i][0] = 1.0;  // if a marker is encountered
+            mStrayMarkers[i][1] = markerVisibilities[i];  // if marker is NOT out of volume
+            mStrayMarkers[i][2] = markerPositions[i].X();
+            mStrayMarkers[i][3] = markerPositions[i].Y();
+            mStrayMarkers[i][4] = markerPositions[i].Z();
 
-            std::cout << "ReportStrayMarkers: " << i + 1
-                                    << "th marker visibility: " << markerVisibilities[i]
-                                    << ", position: " << markerPositions[i] << std::endl;             
-        }  
-
-    }    
-
+            std::cerr << "ReportStrayMarkers: " << i + 1
+                      << "th marker visibility: " << markerVisibilities[i]
+                      << ", position: " << markerPositions[i] << std::endl;
+        }
+    }
     parsePointer += 4;  // skip System Status
-}
-
-
-void mtsNDISerial::CalibratePivot(const std::string & toolName)
-{
-    Tool * tool = Tools.GetItem(toolName);
-    CMN_LOG_CLASS_RUN_WARNING << "CalibratePivot: calibrating " << tool->Name << std::endl;
-
-#if CISST_HAS_CISSTNETLIB
-    const unsigned int numPoints = 500;
-
-    tool->TooltipOffset.SetAll(0.0);
-
-    CommandSend("TSTART 80");
-    ResponseRead("OKAY");
-
-    CMN_LOG_CLASS_RUN_WARNING << "CalibratePivot: starting calibration in 5 seconds" << std::endl;
-    osaSleep(5.0 * cmn_s);
-    CMN_LOG_CLASS_RUN_WARNING << "CalibratePivot: calibration stopped" << std::endl;
-    Beep(2);
-
-    vctMat A(3 * numPoints, 6, VCT_COL_MAJOR);
-    vctMat b(3 * numPoints, 1, VCT_COL_MAJOR);
-    std::vector<vctFrm3> frames(numPoints);
-
-    for (unsigned int i = 0; i < numPoints; i++) {
-        Track();
-        frames[i] = tool->MarkerPosition.Position();
-
-        vctDynamicMatrixRef<double> rotation(3, 3, 1, numPoints*3, A.Pointer(i*3, 0));
-        rotation.Assign(tool->MarkerPosition.Position().Rotation());
-
-        vctDynamicMatrixRef<double> identity(3, 3, 1, numPoints*3, A.Pointer(i*3, 3));
-        identity.Assign(-vctRot3::Identity());
-
-        vctDynamicVectorRef<double> translation(3, b.Pointer(i*3, 0));
-        translation.Assign(tool->MarkerPosition.Position().Translation());
-    }
-
-    CMN_LOG_CLASS_RUN_WARNING << "CalibratePivot: calibration started" << std::endl;
-    CommandSend("TSTOP ");
-    ResponseRead("OKAY");
-
-    nmrLSSolver calibration(A, b);
-    calibration.Solve(A, b);
-
-    vct3 tooltip;
-    vct3 pivot;
-    for (unsigned int i = 0; i < 3; i++) {
-        tooltip.Element(i) = -b.at(i, 0);
-        pivot.Element(i) = -b.at(i+3, 0);
-    }
-    tool->TooltipOffset = tooltip;
-
-    vct3 error;
-    double errorSquareSum = 0.0;
-    for (unsigned int i = 0; i < numPoints; i++) {
-        error = (frames[i] * tooltip) - pivot;
-        CMN_LOG_CLASS_RUN_DEBUG << "CalibratePivot: error " << error << std::endl;
-        errorSquareSum += error.NormSquare();
-    }
-    double errorRMS = sqrt(errorSquareSum / numPoints);
-
-    CMN_LOG_CLASS_RUN_WARNING << "CalibratePivot:\n"
-                              << " * tooltip offset: " << tooltip << "\n"
-                              << " * pivot position: " << pivot << "\n"
-                              << " * error RMS: " << errorRMS << std::endl;
-#else
-    CMN_LOG_CLASS_RUN_ERROR << "CalibratePivot: requires cisstNetlib" << std::endl;
-#endif
 }
 
 
@@ -1048,12 +991,12 @@ void mtsNDISerial::ReportStrayMarkers(void)
     unsigned int numMarkers = 0;
 
     // save tracking status
-    bool wasTracking = IsTracking;
+    bool wasTracking = mIsTracking;
     ToggleTracking(true);
 
     CommandSend("TX 1000");
     ResponseRead();
-    parsePointer = SerialBuffer;
+    parsePointer = mSerialBuffer;
 
     // skip handle number for all port handles
     sscanf(parsePointer, "%02X", &numPortHandles);
@@ -1084,7 +1027,7 @@ void mtsNDISerial::ReportStrayMarkers(void)
     // read marker positions
     std::vector<vct3> markerPositions(numMarkers);
     std::vector<bool> markerVisibilities(numMarkers);
-    StrayMarkers.Zeros();
+    mStrayMarkers.Zeros();
     for (unsigned int i = 0; i < numMarkers; i++) {
         sscanf(parsePointer, "%7lf%7lf%7lf",
                &(markerPositions[i].X()), &(markerPositions[i].Y()), &(markerPositions[i].Z()));
@@ -1092,11 +1035,11 @@ void mtsNDISerial::ReportStrayMarkers(void)
         markerPositions[i].Divide(100.0);  // handle the implied decimal point
         markerVisibilities[i] = outOfVolumeReply[i + numGarbageBits];  // handle garbage bits in reply
 
-        StrayMarkers[i][0] = 1.0;  // if a marker is encountered
-        StrayMarkers[i][1] = markerVisibilities[i];  // if marker is NOT out of volume
-        StrayMarkers[i][2] = markerPositions[i].X();
-        StrayMarkers[i][3] = markerPositions[i].Y();
-        StrayMarkers[i][4] = markerPositions[i].Z();
+        mStrayMarkers[i][0] = 1.0;  // if a marker is encountered
+        mStrayMarkers[i][1] = markerVisibilities[i];  // if marker is NOT out of volume
+        mStrayMarkers[i][2] = markerPositions[i].X();
+        mStrayMarkers[i][3] = markerPositions[i].Y();
+        mStrayMarkers[i][4] = markerPositions[i].Z();
 
         CMN_LOG_CLASS_RUN_DEBUG << "ReportStrayMarkers: " << i + 1
                                 << "th marker visibility: " << markerVisibilities[i]
