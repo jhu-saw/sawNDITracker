@@ -48,9 +48,13 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstVector/vctFixedSizeVectorTypes.h>
 #include <cisstOSAbstraction/osaSerialPort.h>
 #include <cisstOSAbstraction/osaStopwatch.h>
+
 #include <cisstMultiTask/mtsMatrix.h>
 #include <cisstMultiTask/mtsTaskPeriodic.h>
+
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
+
+#include <sawNDITracker/sawNDITrackerConfig.h>
 #include <sawNDITracker/sawNDITrackerExport.h>  // always include last
 
 
@@ -80,7 +84,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
         char SerialNumber[9];
         // PHINF 0004
         char PartNumber[21];
-
+        std::string Definition;
         vct3 TooltipOffset;
     };
 

@@ -81,14 +81,26 @@ int main(int argc, char * argv[])
     mtsNDISerialControllerQtWidget * trackerWidget = new mtsNDISerialControllerQtWidget("NDI Widget");
 
     // configure the components
-    cmnPath searchPath;
-    searchPath.Add(cmnPath::GetWorkingDirectory());
-    std::string configPath = searchPath.Find(configFile);
-	if (configPath.empty()) {
-		std::cerr << "Failed to find configuration file \"" << configFile << "\"" << std::endl
-                  << "Searched in: " << configPath << std::endl;
-		return 1;
-	}
+    std::string configPath = "";
+    // if there's a config file passed as argument, try to locate it
+    if (configFile != "") {
+        if (cmnPath::Exists(configFile)) {
+            configPath = configFile;
+        } else {
+            // search in current working directory and source tree
+            cmnPath searchPath;
+            searchPath.Add(cmnPath::GetWorkingDirectory());
+            searchPath.Add(std::string(sawNDITracker_SOURCE_DIR) + "/../share", cmnPath::TAIL);
+            configPath = searchPath.Find(configFile);
+            // if still empty
+            if (configPath.empty()) {
+                std::cerr << "Failed to find configuration file \"" << configFile << "\"" << std::endl
+                          << "Searched in: " << configPath << std::endl;
+                return 1;
+            }
+        }
+    }
+    // configure
     tracker->Configure(configPath);
 
     // add the components to the component manager

@@ -1,0 +1,10 @@
+{
+    "serial-port": "/dev/ttyUSB0",
+    "tools": [
+	{
+	    "name": "Pointer",
+	    "serial-number": "34802401",
+	    "definition": "8700339.rom"
+	}
+    ]
+}

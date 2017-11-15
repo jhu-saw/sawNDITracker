@@ -19,7 +19,6 @@ http://www.cisst.org/cisst/license.txt.
 #include <bitset>
 
 #include <cisstCommon/cmnStrings.h>
-#include <cisstCommon/cmnXMLPath.h>
 #include <cisstVector/vctDynamicMatrixTypes.h>
 
 #include <cisstMultiTask/mtsInterfaceProvided.h>
@@ -85,6 +84,76 @@ void mtsNDISerial::Configure(const std::string & filename)
 {
     CMN_LOG_CLASS_INIT_VERBOSE << "Configure: using " << filename << std::endl;
 
+    std::ifstream jsonStream;
+    jsonStream.open(filename.c_str());
+
+    Json::Value jsonConfig, jsonValue;
+    Json::Reader jsonReader;
+    // make sure the file valid json
+    if (!jsonReader.parse(jsonStream, jsonConfig)) {
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to parse configuration" << std::endl
+                                 << "File: " << filename << std::endl << "Error(s):" << std::endl
+                                 << jsonReader.getFormattedErrorMessages();
+        return;
+    }
+    // keep the content of the file in cisstLog for debugging
+    CMN_LOG_CLASS_INIT_VERBOSE << "Configure: " << this->GetName()
+                               << " using file \"" << filename << "\"" << std::endl
+                               << "----> content of configuration file: " << std::endl
+                               << jsonConfig << std::endl
+                               << "<----" << std::endl;
+
+
+    // start looking for configuration parameters
+    jsonValue = jsonConfig["serial-port"];
+    // if the port is specified in the json file
+    if (!jsonValue.empty()) {
+        // and if it has not already been set
+        if (mSerialPortName == "") {
+            mSerialPortName = jsonValue.asString();
+            if (mSerialPortName == "") {
+                CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to convert \"serial-port\" to a string" << std::endl;
+                return;
+            }
+            CMN_LOG_CLASS_INIT_VERBOSE << "Configure: found \"serial-port\": " << mSerialPortName << std::endl;
+        } else {
+            CMN_LOG_CLASS_INIT_WARNING << "Configure: \"serial-port\" in file \"" << filename
+                                       << "\" will be ignored since the serial port has already been set as: "
+                                       << mSerialPortName << std::endl;
+        }
+    }
+
+    // get tools defined by user
+    const Json::Value jsonTools = jsonConfig["tools"];
+    for (unsigned int index = 0; index < jsonTools.size(); ++index) {
+        std::string name, serialNumber, definition;
+        const Json::Value jsonTool = jsonTools[index];
+        jsonValue = jsonTool["name"];
+        if (!jsonValue.empty()) {
+            name = jsonValue.asString();
+        } else {
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to find \"name\" for tools["
+                                     << index << "]" << std::endl;
+            return;
+        }
+        jsonValue = jsonTool["serial-number"];
+        if (!jsonValue.empty()) {
+            serialNumber = jsonValue.asString();
+        } else {
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to find \"serial-number\" for tools["
+                                     << index << "]" << std::endl;
+            return;
+        }
+        jsonValue = jsonTool["definition"];
+        if (!jsonValue.empty()) {
+            definition = jsonValue.asString();
+        } else {
+            definition = "";
+        }
+
+        Tool * tool = AddTool(name, serialNumber);
+    }
+
 #if 0
     cmnXMLPath config;
     config.SetInputSource(filename);
@@ -145,7 +214,6 @@ void mtsNDISerial::Configure(const std::string & filename)
         }
     }
     mReadTimeout = timeout;
-
 #endif
 }
 
@@ -204,6 +272,7 @@ void mtsNDISerial::Connect(void)
                 mControllerInterface->SendStatus(this->GetName() + ": trying to reset serial port: "
                                                  + mSerialPort.GetPortName());
                 if (ResetSerialPort()) {
+                    // looks like we found it!
                     mSerialPortName = mSerialPort.GetPortName();
                     break;
                 }
@@ -217,8 +286,8 @@ void mtsNDISerial::Connect(void)
                                      + mSerialPort.GetPortName());
 
     // increase the timeout during initialization
-    double timeout = mReadTimeout;
-    mReadTimeout = 10.0 * cmn_s;
+    const double previousTimeout = mReadTimeout;
+    mReadTimeout = 5.0 * cmn_s;
 
     SetSerialPortSettings(osaSerialPort::BaudRate115200,
                           osaSerialPort::CharacterSize8,
@@ -232,6 +301,7 @@ void mtsNDISerial::Connect(void)
         mControllerInterface->SendStatus(this->GetName() + ": device initialized");
     } else {
         mControllerInterface->SendError(this->GetName() + ": device failed to initialize");
+        mReadTimeout = previousTimeout;
         return;
     }
 
@@ -254,8 +324,11 @@ void mtsNDISerial::Connect(void)
     } else {
         mControllerInterface->SendError(this->GetName() + ": device firmware is not what we're expecting, got: "
                                         + mSerialBuffer);
+        mReadTimeout = previousTimeout;
         return;
     }
+
+    mReadTimeout = previousTimeout;
 }
 
 
@@ -358,9 +431,11 @@ bool mtsNDISerial::ResponseRead(void)
     do {
         int bytesRead = mSerialPort.Read(mSerialBufferPointer,
                                          static_cast<int>(GetSerialBufferAvailableSize()));
-        mSerialBufferPointer += bytesRead;
-        receivedMessage = (GetSerialBufferSize() > 0)
-            && (*(mSerialBufferPointer - 1) == '\r');
+        if (bytesRead > 0) {
+            mSerialBufferPointer += bytesRead;
+            receivedMessage = (GetSerialBufferSize() > 0)
+                && (*(mSerialBufferPointer - 1) == '\r');
+        }
     } while ((mResponseTimer.GetElapsedTime() < mReadTimeout)
              && !receivedMessage);
 
@@ -439,7 +514,7 @@ bool mtsNDISerial::ResetSerialPort(void)
 
     // temporary increase timeout to leave time for the system to boot
     const double previousReadTimeout = mReadTimeout;
-    mReadTimeout = 10.0 * cmn_s;
+    mReadTimeout = 5.0 * cmn_s;
     if (!ResponseRead("RESET")) {
         CMN_LOG_CLASS_INIT_ERROR << "ResetSerialPort: failed to reset" << std::endl;
         mReadTimeout = previousReadTimeout;
@@ -931,7 +1006,6 @@ void mtsNDISerial::Track(void)
         CommandSend("TX 1001");
     }
     ResponseRead();
-    // std::cerr << SerialBuffer << std::endl
     parsePointer = mSerialBuffer;
     sscanf(parsePointer, "%02X", &numPortHandles);
     parsePointer += 2;
@@ -982,8 +1056,6 @@ void mtsNDISerial::Track(void)
             tooltipPosition.Translation() += tooltipPosition.Rotation() * tool->TooltipOffset;  // apply tooltip offset
             tool->TooltipPosition.Position() = tooltipPosition;  // Tool Tip Position = Orientation + Tooltip
             tool->TooltipPosition.SetValid(true);
-
-            std::cerr << "Track: " << tool->Name << " is at:\n" << tooltipPosition << std::endl;
         }
         sscanf(parsePointer, "%08X", &(tool->FrameNumber));
         parsePointer += 8;
@@ -999,7 +1071,6 @@ void mtsNDISerial::Track(void)
         // read number of stray markers
         sscanf(parsePointer, "%02X", &numMarkers);
         parsePointer += 2;
-        //     std::cerr << "Track: " << numMarkers << " stray markers detected" << std::endl;
 
         // read "out of volume" reply (see, API documentation for "Reply Option 1000" if this section seems convoluted)
         unsigned int outOfVolumeReplySize = static_cast<unsigned int>(ceil(numMarkers / 4.0));

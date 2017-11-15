@@ -80,9 +80,13 @@ if (cisst_FOUND_AS_REQUIRED)
                   "${sawNDITracker_CMAKE_CONFIG_FILE}"
                   @ONLY)
 
+  configure_file ("${sawNDITracker_SOURCE_DIR}/code/sawNDITrackerConfig.h.in"
+                  "${sawNDITracker_BINARY_DIR}/include/sawNDITracker/sawNDITrackerConfig.h")
+
   # Install target for headers and library
   install (DIRECTORY
            "${sawNDITracker_SOURCE_DIR}/include/sawNDITracker"
+           "${sawNDITracker_BINARY_DIR}/include/sawNDITracker"
            DESTINATION include
            PATTERN .svn EXCLUDE)
 

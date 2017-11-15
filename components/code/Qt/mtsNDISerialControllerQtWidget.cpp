@@ -121,8 +121,6 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
     QMMessage->setupUi();
     systemLayout->addWidget(QMMessage);
 
-    systemLayout->addStretch();
-
     setLayout(mainLayout);
     setWindowTitle("sawNDITracker");
     resize(sizeHint());
