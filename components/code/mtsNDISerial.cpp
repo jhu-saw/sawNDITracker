@@ -657,9 +657,10 @@ void mtsNDISerial::Beep(const int & numberOfBeeps)
 }
 
 
-void mtsNDISerial::LoadToolDefinitionFile(const char * portHandle, const char * filePath)
+void mtsNDISerial::LoadToolDefinitionFile(const char * portHandle,
+                                          const std::string & filePath)
 {
-    std::ifstream toolDefinitionFile(filePath, std::ios::binary);
+    std::ifstream toolDefinitionFile(filePath.c_str(), std::ios::binary);
     if (!toolDefinitionFile.is_open()) {
         CMN_LOG_CLASS_INIT_ERROR << "LoadToolDefinitionFile: could not open " << filePath << std::endl;
         return;
@@ -702,14 +703,14 @@ void mtsNDISerial::LoadToolDefinitionFile(const char * portHandle, const char * 
 }
 
 
-mtsNDISerial::Tool * mtsNDISerial::CheckTool(const char * serialNumber)
+mtsNDISerial::Tool * mtsNDISerial::CheckTool(const std::string & serialNumber)
 {
     const ToolsType::const_iterator end = mTools.end();
     ToolsType::const_iterator toolIterator;
     for (toolIterator = mTools.begin();
          toolIterator != end;
          ++toolIterator) {
-        if (strncmp(toolIterator->second->SerialNumber, serialNumber, 8) == 0) {
+        if (toolIterator->second->SerialNumber == serialNumber) {
             CMN_LOG_CLASS_INIT_DEBUG << "CheckTool: found existing tool for serial number: " << serialNumber << std::endl;
             return toolIterator->second;
         }
@@ -718,7 +719,7 @@ mtsNDISerial::Tool * mtsNDISerial::CheckTool(const char * serialNumber)
 }
 
 
-mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name, const char * serialNumber)
+mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name, const std::string & serialNumber)
 {
     Tool * tool = CheckTool(serialNumber);
 
@@ -728,7 +729,7 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name, const char 
     } else {
         tool = new Tool();
         tool->Name = name;
-        strncpy(tool->SerialNumber, serialNumber, 8);
+        tool->SerialNumber = serialNumber;
 
         if (!mTools.AddItem(tool->Name, tool, CMN_LOG_LEVEL_INIT_ERROR)) {
             CMN_LOG_CLASS_INIT_ERROR << "AddTool: no tool created, duplicate name exists: " << name << std::endl;
@@ -751,7 +752,9 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name, const char 
 }
 
 
-mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name, const char * serialNumber, const char * toolDefinitionFile)
+mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
+                                           const std::string & serialNumber,
+                                           const std::string & toolDefinitionFile)
 {
     char portHandle[3];
     portHandle[2] = '\0';

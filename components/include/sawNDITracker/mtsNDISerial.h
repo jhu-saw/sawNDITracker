@@ -81,7 +81,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
         char MainType[3];
         char ManufacturerID[13];
         char ToolRevision[4];
-        char SerialNumber[9];
+        std::string SerialNumber;
         // PHINF 0004
         char PartNumber[21];
         std::string Definition;
@@ -174,10 +174,13 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
                                osaSerialPort::FlowControlType flowControl);
     void Beep(const int & numberOfBeeps);
 
-    void LoadToolDefinitionFile(const char * portHandle, const char * filePath);
-    Tool * CheckTool(const char * serialNumber);
-    Tool * AddTool(const std::string & name, const char * serialNumber);
-    Tool * AddTool(const std::string & name, const char * serialNumber, const char * toolDefinitionFile);
+    void LoadToolDefinitionFile(const char * portHandle, const std::string & filePath);
+    Tool * CheckTool(const std::string & serialNumber);
+    Tool * AddTool(const std::string & name,
+                   const std::string & serialNumber);
+    Tool * AddTool(const std::string & name,
+                   const std::string & serialNumber,
+                   const std::string & toolDefinitionFile);
 
     void ToggleTracking(const bool & track);
     void ToggleStrayMarkers(const bool & stray);
