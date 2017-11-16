@@ -27,7 +27,8 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstMultiTask/mtsMessageQtWidget.h>
 
 #include <QWidget>
-#include <QLabel>
+#include <QCheckBox>
+#include <QSpinBox>
 
 // Always include last
 #include <sawNDITracker/sawNDITrackerQtExport.h>
@@ -58,11 +59,19 @@ private:
 
 protected:
     struct {
-        mtsFunctionRead GetPeriodStatistics;
-        mtsFunctionVoid Connect;
+        mtsFunctionRead  GetPeriodStatistics;
+        mtsFunctionWrite Connect;
+        mtsFunctionVoid  Disconnect;
+        mtsFunctionWrite Track;
+        mtsFunctionWrite Beep;
     } Tracker;
 
 private:
+    // Control
+    QCheckBox * QCBConnect;
+    QCheckBox * QCBTrack;
+    QSpinBox * QSBBeepCount;
+
     // Timing
     mtsIntervalStatistics IntervalStatistics;
     mtsIntervalStatisticsQtWidget * QMIntervalStatistics;
@@ -71,7 +80,9 @@ private:
     mtsMessageQtWidget * QMMessage;
 
  private slots:
-    void SlotConnect(void);
+    void SlotConnect(bool);
+    void SlotTrack(bool);
+    void SlotBeep(void);
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsNDISerialControllerQtWidget);

@@ -58,7 +58,8 @@ void mtsNDISerial::Init(void)
     mControllerInterface = AddInterfaceProvided("Controller");
     if (mControllerInterface) {
         mControllerInterface->AddMessageEvents();
-        mControllerInterface->AddCommandVoid(&mtsNDISerial::Connect, this, "Connect");
+        mControllerInterface->AddCommandWrite(&mtsNDISerial::Connect, this, "Connect");
+        mControllerInterface->AddCommandVoid(&mtsNDISerial::Disconnect, this, "Disconnect");
         mControllerInterface->AddCommandWrite(&mtsNDISerial::Beep, this, "Beep");
         mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesInitialize, this, "PortHandlesInitialize");
         mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesQuery, this, "PortHandlesQuery");
@@ -217,12 +218,17 @@ void mtsNDISerial::Configure(const std::string & filename)
 #endif
 }
 
-void mtsNDISerial::Connect(void)
+void mtsNDISerial::Connect(const std::string & serialPortName)
 {
     // in case someone calls Connect multiple times
     if (mSerialPort.IsOpened()) {
         mSerialPort.Close();
         mControllerInterface->SendStatus(this->GetName() + ": serial port was opened, closing first");
+    }
+
+    // if this method is called with a serial port, overwrite the existing one
+    if (!serialPortName.empty()) {
+        mSerialPortName = serialPortName;
     }
 
     // first try to connect using a port name provided either in the
@@ -331,12 +337,20 @@ void mtsNDISerial::Connect(void)
     mReadTimeout = previousTimeout;
 }
 
+void mtsNDISerial::Disconnect(void)
+{
+    // just in case we were tracking
+    ToggleTracking(false);
+    // close serial port
+    mSerialPort.Close();
+}
 
 void mtsNDISerial::Run(void)
 {
     ProcessQueuedCommands();
 
     if (mIsTracking) {
+        std::cerr << ".";
         Track();
     }
 }
@@ -971,17 +985,31 @@ void mtsNDISerial::PortHandlesEnable(void)
 
 void mtsNDISerial::ToggleTracking(const bool & track)
 {
-    if (track && !mIsTracking) {
-        CMN_LOG_CLASS_INIT_VERBOSE << "ToggleTracking: tracking is on" << std::endl;
-        CommandSend("TSTART 80");
-    } else if (!track && mIsTracking) {
-        CMN_LOG_CLASS_INIT_VERBOSE << "ToggleTracking: tracking is off" << std::endl;
-        CommandSend("TSTOP ");
-    } else {
+    std::cerr << "ToggleTracking: " << track << std::endl;
+
+    // detect change
+    if (track == mIsTracking) {
         return;
     }
-    mIsTracking = !mIsTracking;
-    ResponseRead("OKAY");
+
+    // if track requested
+    if (track) {
+        CommandSend("TSTART 80");
+        if (ResponseRead("OKAY")) {
+            mIsTracking = true;
+            mControllerInterface->SendStatus(this->GetName() + ": tracking is on");
+        } else {
+            mControllerInterface->SendError(this->GetName() + ": failed to turn tracking on");
+        }
+    } else {
+        CommandSend("TSTOP ");
+        if (ResponseRead("OKAY")) {
+            mIsTracking = false;
+            mControllerInterface->SendStatus(this->GetName() + ": tracking is off");
+        } else {
+            mControllerInterface->SendError(this->GetName() + ": failed to turn tracking off");
+        }
+    }
     Sleep(0.5 * cmn_s);
 }
 

@@ -44,6 +44,9 @@ mtsNDISerialControllerQtWidget::mtsNDISerialControllerQtWidget(const std::string
         QMMessage->SetInterfaceRequired(interfaceRequired);
         interfaceRequired->AddFunction("GetPeriodStatistics", Tracker.GetPeriodStatistics);
         interfaceRequired->AddFunction("Connect", Tracker.Connect);
+        interfaceRequired->AddFunction("Disconnect", Tracker.Disconnect);
+        interfaceRequired->AddFunction("ToggleTracking", Tracker.Track);
+        interfaceRequired->AddFunction("Beep", Tracker.Beep);
     }
     setupUi();
     startTimer(TimerPeriodInMilliseconds); // ms
@@ -102,11 +105,41 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
     QVBoxLayout * controlLayout = new QVBoxLayout;
     mainLayout->addLayout(controlLayout);
 
-    QPushButton * connectButton = new QPushButton("Connect");
-    controlLayout->addWidget(connectButton);
-    connect(connectButton, SIGNAL(clicked()),
-            this, SLOT(SlotConnect()));
+    QGridLayout * gridLayout = new QGridLayout;
+    gridLayout->setContentsMargins(2, 2, 2, 2);
+    gridLayout->setSpacing(1);
+    int row = 0;
 
+    // connect
+    gridLayout->addWidget(new QLabel("Connect"), row, 0);
+    QCBConnect = new QCheckBox;
+    QCBConnect->setChecked(false);
+    gridLayout->addWidget(QCBConnect, row, 1);
+    connect(QCBConnect, SIGNAL(toggled(bool)),
+            this, SLOT(SlotConnect(bool)));
+    row++;
+
+    // track
+    gridLayout->addWidget(new QLabel("Track"), row, 0);
+    QCBTrack = new QCheckBox;
+    QCBTrack->setChecked(false);
+    gridLayout->addWidget(QCBTrack, row, 1);
+    connect(QCBTrack, SIGNAL(toggled(bool)),
+            this, SLOT(SlotTrack(bool)));
+    row++;
+
+    // beep
+    QPushButton * beepButton = new QPushButton("Beep");
+    gridLayout->addWidget(beepButton, row, 0);
+    QSBBeepCount = new QSpinBox;
+    QSBBeepCount->setMaximum(9);
+    QSBBeepCount->setMinimum(1);
+    QSBBeepCount->setValue(3);
+    gridLayout->addWidget(QSBBeepCount, row, 1);
+    connect(beepButton, SIGNAL(clicked()),
+            this, SLOT(SlotBeep()));
+
+    controlLayout->addLayout(gridLayout);
     controlLayout->addStretch();
 
     // System
@@ -126,7 +159,22 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
     resize(sizeHint());
 }
 
-void mtsNDISerialControllerQtWidget::SlotConnect(void)
+void mtsNDISerialControllerQtWidget::SlotConnect(bool connect)
 {
-    Tracker.Connect();
+    if (connect) {
+        std::string serialPortName; // empty means use default
+        Tracker.Connect(serialPortName);
+    } else {
+        Tracker.Disconnect();
+    }
+}
+
+void mtsNDISerialControllerQtWidget::SlotTrack(bool track)
+{
+    Tracker.Track(track);
+}
+
+void mtsNDISerialControllerQtWidget::SlotBeep(void)
+{
+    Tracker.Beep(QSBBeepCount->value());
 }
