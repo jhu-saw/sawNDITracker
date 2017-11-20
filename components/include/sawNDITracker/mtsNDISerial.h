@@ -126,10 +126,11 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
       class. */
     void Connect(const std::string & serialPortName);
     void Disconnect(void);
-    
+
     void PortHandlesInitialize(void);
     void PortHandlesQuery(void);
     void PortHandlesEnable(void);
+    void PortHandlesPassiveTools(void);
 
  protected:
     enum { MAX_BUFFER_SIZE = 512 };
@@ -182,8 +183,6 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     void LoadToolDefinitionFile(const char * portHandle, const std::string & filePath);
     Tool * CheckTool(const std::string & serialNumber);
     Tool * AddTool(const std::string & name,
-                   const std::string & serialNumber);
-    Tool * AddTool(const std::string & name,
                    const std::string & serialNumber,
                    const std::string & toolDefinitionFile);
 
@@ -192,6 +191,13 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     void Track(void);
     void ReportStrayMarkers(void);
 
+    struct {
+        mtsFunctionWrite Connected;
+        mtsFunctionWrite Tracking;
+        mtsFunctionVoid UpdatedTools;
+    } Events;
+
+    mtsStateTable * mConfigurationStateTable;
     mtsInterfaceProvided * mControllerInterface;
 
     std::string mSerialPortName;
@@ -202,6 +208,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     typedef cmnNamedMap<Tool> ToolsType;
     ToolsType mTools;
     cmnNamedMap<Tool> mPortToTool;
+    std::vector<std::string> mToolNames;
 
     bool mIsTracking;
     bool mTrackStrayMarkers;

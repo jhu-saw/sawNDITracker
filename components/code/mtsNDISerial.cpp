@@ -22,6 +22,8 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstVector/vctDynamicMatrixTypes.h>
 
 #include <cisstMultiTask/mtsInterfaceProvided.h>
+#include <cisstMultiTask.h>
+
 #include <sawNDITracker/mtsNDISerial.h>
 
 CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsNDISerial, mtsTaskPeriodic, mtsTaskPeriodicConstructorArg);
@@ -51,6 +53,13 @@ void mtsNDISerial::Init(void)
     memset(mSerialBuffer, 0, MAX_BUFFER_SIZE);
     mSerialBufferPointer = mSerialBuffer;
 
+    mConfigurationStateTable = new mtsStateTable(100, "Configuration");
+    mConfigurationStateTable->SetAutomaticAdvance(false);
+    this->AddStateTable(mConfigurationStateTable);
+    mConfigurationStateTable->AddData(this->Name, "TrackerName");
+    mConfigurationStateTable->AddData(mSerialPortName, "SerialPort");
+    mConfigurationStateTable->AddData(mToolNames, "ToolNames");
+
     StateTable.AddData(mIsTracking, "IsTracking");
     StateTable.AddData(mTrackStrayMarkers, "TrackStrayMarkers");
     StateTable.AddData(mStrayMarkers, "StrayMarkers");
@@ -66,12 +75,21 @@ void mtsNDISerial::Init(void)
         mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesEnable, this, "PortHandlesEnable");
         mControllerInterface->AddCommandVoid(&mtsNDISerial::ReportStrayMarkers, this, "ReportStrayMarkers");
         mControllerInterface->AddCommandWrite(&mtsNDISerial::ToggleTracking, this, "ToggleTracking");
+        mControllerInterface->AddCommandReadState(*mConfigurationStateTable, this->Name, "Name");
+        mControllerInterface->AddCommandReadState(*mConfigurationStateTable, mSerialPortName, "SerialPort");
+        mControllerInterface->AddCommandReadState(*mConfigurationStateTable, mToolNames, "ToolNames");
         mControllerInterface->AddCommandReadState(StateTable, mIsTracking, "IsTracking");
         mControllerInterface->AddCommandReadState(StateTable, mTrackStrayMarkers, "TrackStrayMarkers");
         mControllerInterface->AddCommandReadState(StateTable, mStrayMarkers, "StrayMarkers");
         mControllerInterface->AddCommandReadState(StateTable, StateTable.PeriodStats,
                                                   "GetPeriodStatistics");
+        mControllerInterface->AddEventWrite(Events.Connected, "Connected", std::string(""));
+        mControllerInterface->AddEventWrite(Events.Tracking, "Tracking", false);
+        mControllerInterface->AddEventVoid(Events.UpdatedTools, "UpdatedTools");
     }
+
+    mConfigurationStateTable->Start();
+    mConfigurationStateTable->Advance();
 }
 
 
@@ -84,6 +102,10 @@ void mtsNDISerial::SetSerialPort(const std::string & serialPort)
 void mtsNDISerial::Configure(const std::string & filename)
 {
     CMN_LOG_CLASS_INIT_VERBOSE << "Configure: using " << filename << std::endl;
+
+    if (filename.empty()) {
+        return;
+    }
 
     std::ifstream jsonStream;
     jsonStream.open(filename.c_str());
@@ -152,7 +174,7 @@ void mtsNDISerial::Configure(const std::string & filename)
             definition = "";
         }
 
-        Tool * tool = AddTool(name, serialNumber);
+        AddTool(name, serialNumber, definition);
     }
 
 #if 0
@@ -307,9 +329,15 @@ void mtsNDISerial::Connect(const std::string & serialPortName)
         mControllerInterface->SendStatus(this->GetName() + ": device initialized");
     } else {
         mControllerInterface->SendError(this->GetName() + ": device failed to initialize");
+        mSerialPort.Close();
         mReadTimeout = previousTimeout;
         return;
     }
+
+    // now we're connected
+    mConfigurationStateTable->Start();
+    mConfigurationStateTable->Advance();
+    Events.Connected(mSerialPortName);
 
     // get some extra information on the system for debug/log
     CommandSend("VER 0");
@@ -335,14 +363,27 @@ void mtsNDISerial::Connect(const std::string & serialPortName)
     }
 
     mReadTimeout = previousTimeout;
+
+    PortHandlesInitialize();
+
+    PortHandlesPassiveTools();
+    
+    PortHandlesQuery();
+
+    PortHandlesEnable();
 }
 
 void mtsNDISerial::Disconnect(void)
 {
     // just in case we were tracking
     ToggleTracking(false);
+    // if we can't properly stop tracking, still set the flag
+    mIsTracking = false;
+
     // close serial port
     mSerialPort.Close();
+    // send event
+    Events.Connected(std::string(""));
 }
 
 void mtsNDISerial::Run(void)
@@ -733,48 +774,59 @@ mtsNDISerial::Tool * mtsNDISerial::CheckTool(const std::string & serialNumber)
 }
 
 
-mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name, const std::string & serialNumber)
+mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
+                                           const std::string & serialNumber,
+                                           const std::string & toolDefinitionFile)
 {
     Tool * tool = CheckTool(serialNumber);
 
     if (tool) {
-        CMN_LOG_CLASS_INIT_WARNING << "AddTool: " << tool->Name << " already exists, renaming it to " << name << " instead" << std::endl;
-        tool->Name = name;
-    } else {
-        tool = new Tool();
-        tool->Name = name;
-        tool->SerialNumber = serialNumber;
-
-        if (!mTools.AddItem(tool->Name, tool, CMN_LOG_LEVEL_INIT_ERROR)) {
-            CMN_LOG_CLASS_INIT_ERROR << "AddTool: no tool created, duplicate name exists: " << name << std::endl;
-            delete tool;
-            return 0;
-        }
-        CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: created tool \"" << name << "\" with serial number: " << serialNumber << std::endl;
-
-        // create an interface for tool
-        tool->Interface = AddInterfaceProvided(name);
-        if (tool->Interface) {
-            tool->Interface->AddCommandRead(&mtsStateTable::GetIndexReader, &StateTable, "GetTableIndex");
-            StateTable.AddData(tool->TooltipPosition, name + "Position");
-            tool->Interface->AddCommandReadState(StateTable, tool->TooltipPosition, "GetPositionCartesian");
-            StateTable.AddData(tool->MarkerPosition, name + "Marker");
-            tool->Interface->AddCommandReadState(StateTable, tool->MarkerPosition, "GetMarkerCartesian");
-        }
+        CMN_LOG_CLASS_INIT_WARNING << "AddTool: there's already a tool with serial number \"" << serialNumber
+                                   << "\", name: " << name << ".  Ignoring request to add tool" << std::endl;
+        return tool;
     }
+
+    tool = new Tool();
+    tool->Name = name;
+    tool->SerialNumber = serialNumber;
+    tool->Definition = toolDefinitionFile;
+
+    if (!mTools.AddItem(tool->Name, tool, CMN_LOG_LEVEL_INIT_ERROR)) {
+        CMN_LOG_CLASS_INIT_ERROR << "AddTool: no tool created, duplicate name exists: " << name << std::endl;
+        delete tool;
+        return 0;
+    }
+    CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: created tool \"" << name << "\" with serial number: " << serialNumber << std::endl;
+
+    // create an interface for tool
+    tool->Interface = AddInterfaceProvided(name);
+    if (tool->Interface) {
+        tool->Interface->AddCommandRead(&mtsStateTable::GetIndexReader, &StateTable, "GetTableIndex");
+        StateTable.AddData(tool->TooltipPosition, name + "Position");
+        tool->Interface->AddCommandReadState(StateTable, tool->TooltipPosition, "GetPositionCartesian");
+        StateTable.AddData(tool->MarkerPosition, name + "Marker");
+        tool->Interface->AddCommandReadState(StateTable, tool->MarkerPosition, "GetMarkerCartesian");
+    }
+
+    // update list of existing tools
+    mConfigurationStateTable->Start(); {
+        mToolNames = mTools.GetNames();
+    } mConfigurationStateTable->Advance();
+    Events.UpdatedTools();
+
     return tool;
 }
 
-
+/*
 mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
                                            const std::string & serialNumber,
-                                           const std::string & toolDefinitionFile)
+
 {
     char portHandle[3];
     portHandle[2] = '\0';
     Tool *toolPtr = 0;
 
-    // request port handle for wireless tool
+    // request port handle for passive tool
     CommandSend("PHRQ *********1****");
     if (ResponseRead()) {
         sscanf(mSerialBuffer, "%2c", portHandle);
@@ -783,10 +835,10 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
         toolPtr = AddTool(name, serialNumber);
     }
     else
-        CMN_LOG_CLASS_INIT_ERROR << "AddTool: failed to receive port handle for wireless tool" << std::endl;
+        CMN_LOG_CLASS_INIT_ERROR << "AddTool: failed to receive port handle for passive tool" << std::endl;
     return toolPtr;
 }
-
+*/
 
 std::string mtsNDISerial::GetToolName(const size_t index) const
 {
@@ -908,7 +960,7 @@ void mtsNDISerial::PortHandlesQuery(void)
         tool = CheckTool(serialNumber);
         if (!tool) {
             std::string name = std::string(mainType) + '-' + std::string(serialNumber);
-            tool = AddTool(name, serialNumber);
+            tool = AddTool(name, serialNumber, "");
         }
 
         // update tool information
@@ -983,10 +1035,35 @@ void mtsNDISerial::PortHandlesEnable(void)
 }
 
 
+void mtsNDISerial::PortHandlesPassiveTools(void)
+{
+    char portHandle[3];
+    portHandle[2] = '\0';
+
+    const ToolsType::const_iterator end = mTools.end();
+    ToolsType::const_iterator toolIterator;
+    for (toolIterator = mTools.begin();
+         toolIterator != end;
+         ++toolIterator) {
+        if (toolIterator->second->Definition != "") {
+            // request port handle for passive tool
+            CommandSend("PHRQ *********1****");
+            if (ResponseRead()) {
+                sscanf(mSerialBuffer, "%2c", portHandle);
+                CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: loading "
+                                           << toolIterator->first << " on port " << portHandle << std::endl;
+                LoadToolDefinitionFile(portHandle, toolIterator->second->Definition);
+                mPortToTool.AddItem(portHandle, toolIterator->second, CMN_LOG_LEVEL_INIT_ERROR);
+            } else {
+                CMN_LOG_CLASS_INIT_ERROR << "AddTool: failed to receive port handle for passive tool" << std::endl;
+            }
+        }
+    }
+}
+
+
 void mtsNDISerial::ToggleTracking(const bool & track)
 {
-    std::cerr << "ToggleTracking: " << track << std::endl;
-
     // detect change
     if (track == mIsTracking) {
         return;
@@ -997,6 +1074,7 @@ void mtsNDISerial::ToggleTracking(const bool & track)
         CommandSend("TSTART 80");
         if (ResponseRead("OKAY")) {
             mIsTracking = true;
+            Events.Tracking(true);
             mControllerInterface->SendStatus(this->GetName() + ": tracking is on");
         } else {
             mControllerInterface->SendError(this->GetName() + ": failed to turn tracking on");
@@ -1005,6 +1083,7 @@ void mtsNDISerial::ToggleTracking(const bool & track)
         CommandSend("TSTOP ");
         if (ResponseRead("OKAY")) {
             mIsTracking = false;
+            Events.Tracking(false);
             mControllerInterface->SendStatus(this->GetName() + ": tracking is off");
         } else {
             mControllerInterface->SendError(this->GetName() + ": failed to turn tracking off");
@@ -1076,11 +1155,12 @@ void mtsNDISerial::Track(void)
                    &(tool->ErrorRMS));
             parsePointer += (4 * 6) + (3 * 7) + 6 + 8;
 
-            toolOrientation.Divide(10000.0);
+            toolOrientation.Divide(10000.0); // implicit format -x.xxxx
             tooltipPosition.Rotation().FromRaw(toolOrientation);
-            toolPosition.Divide(100.0);
+            toolPosition.Divide(100.0); // convert to mm, implicit format -xxxx.xx
+            toolPosition.Multiply(cmn_mm); // convert to whatever cisst is using internally
             tooltipPosition.Translation() = toolPosition;
-            tool->ErrorRMS /= 10000.0;
+            tool->ErrorRMS /= 10000.0; // implicit format -x.xxxx
             tool->MarkerPosition.Position() = tooltipPosition; // Tool Frame Position = Orientation + Frame Origin
             tool->MarkerPosition.SetValid(true);
 

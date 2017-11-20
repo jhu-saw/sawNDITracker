@@ -23,10 +23,10 @@ http://www.cisst.org/cisst/license.txt.
 #include <QString>
 #include <QtGui>
 #include <QMessageBox>
-#include <QPushButton>
 
 // cisst
 #include <cisstMultiTask/mtsInterfaceRequired.h>
+#include <cisstMultiTask/mtsManagerLocal.h>
 #include <cisstParameterTypes/prmForceCartesianSet.h>
 #include <sawNDITracker/mtsNDISerialControllerQtWidget.h>
 
@@ -45,8 +45,16 @@ mtsNDISerialControllerQtWidget::mtsNDISerialControllerQtWidget(const std::string
         interfaceRequired->AddFunction("GetPeriodStatistics", Tracker.GetPeriodStatistics);
         interfaceRequired->AddFunction("Connect", Tracker.Connect);
         interfaceRequired->AddFunction("Disconnect", Tracker.Disconnect);
+        // ADV        interfaceRequired->AddFunction("Name", Tracker.Name);
+        interfaceRequired->AddFunction("ToolNames", Tracker.ToolNames);
         interfaceRequired->AddFunction("ToggleTracking", Tracker.Track);
         interfaceRequired->AddFunction("Beep", Tracker.Beep);
+        interfaceRequired->AddEventHandlerWrite(&mtsNDISerialControllerQtWidget::ConnectedEventHandler,
+                                                this, "Connected");
+        interfaceRequired->AddEventHandlerWrite(&mtsNDISerialControllerQtWidget::TrackingEventHandler,
+                                                this, "Tracking");
+        interfaceRequired->AddEventHandlerVoid(&mtsNDISerialControllerQtWidget::UpdatedToolsEventHandler,
+                                               this, "UpdatedTools");
     }
     setupUi();
     startTimer(TimerPeriodInMilliseconds); // ms
@@ -95,15 +103,32 @@ void mtsNDISerialControllerQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(event))
 
     Tracker.GetPeriodStatistics(IntervalStatistics);
     QMIntervalStatistics->SetValue(IntervalStatistics);
+
+    const ToolMap::iterator end = Tools.end();
+    ToolMap::iterator toolIter;
+    for (toolIter = Tools.begin();
+         toolIter != end;
+         ++toolIter) {
+        Tool * tool = toolIter->second;
+        tool->GetPositionCartesian(tool->Position);
+        if (tool->Position.Valid()) {
+            tool->Widget->SetValue(tool->Position.Position());
+        } else {
+            tool->Widget->SetValue(vctFrm3::Identity());
+        }
+    }
 }
 
 void mtsNDISerialControllerQtWidget::setupUi(void)
 {
-    QHBoxLayout * mainLayout = new QHBoxLayout;
+    QVBoxLayout * mainLayout = new QVBoxLayout;
+
+    QHBoxLayout * topLayout = new QHBoxLayout;
+    mainLayout->addLayout(topLayout);
 
     // Side by side for 3D position, gripper...
     QVBoxLayout * controlLayout = new QVBoxLayout;
-    mainLayout->addLayout(controlLayout);
+    topLayout->addLayout(controlLayout);
 
     QGridLayout * gridLayout = new QGridLayout;
     gridLayout->setContentsMargins(2, 2, 2, 2);
@@ -119,6 +144,12 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
             this, SLOT(SlotConnect(bool)));
     row++;
 
+    // port name
+    gridLayout->addWidget(new QLabel("Port"), row, 0);
+    QLPortName = new QLabel("");
+    gridLayout->addWidget(QLPortName, row, 1);
+    row++;
+
     // track
     gridLayout->addWidget(new QLabel("Track"), row, 0);
     QCBTrack = new QCheckBox;
@@ -129,14 +160,14 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
     row++;
 
     // beep
-    QPushButton * beepButton = new QPushButton("Beep");
-    gridLayout->addWidget(beepButton, row, 0);
+    QPBBeepButton = new QPushButton("Beep");
+    gridLayout->addWidget(QPBBeepButton, row, 0);
     QSBBeepCount = new QSpinBox;
     QSBBeepCount->setMaximum(9);
     QSBBeepCount->setMinimum(1);
     QSBBeepCount->setValue(3);
     gridLayout->addWidget(QSBBeepCount, row, 1);
-    connect(beepButton, SIGNAL(clicked()),
+    connect(QPBBeepButton, SIGNAL(clicked()),
             this, SLOT(SlotBeep()));
 
     controlLayout->addLayout(gridLayout);
@@ -144,7 +175,7 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
 
     // System
     QVBoxLayout * systemLayout = new QVBoxLayout();
-    mainLayout->addLayout(systemLayout);
+    topLayout->addLayout(systemLayout);
 
     // Timing
     QMIntervalStatistics = new mtsIntervalStatisticsQtWidget();
@@ -154,9 +185,32 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
     QMMessage->setupUi();
     systemLayout->addWidget(QMMessage);
 
+    // Tools in a tab
+    QGTools = new QGridLayout();
+    mainLayout->addLayout(QGTools);
+
     setLayout(mainLayout);
     setWindowTitle("sawNDITracker");
     resize(sizeHint());
+
+    // connect slots/signal for cisst events
+    connect(this, SIGNAL(SignalConnectedEvent()),
+            this, SLOT(SlotConnectedEvent()));
+    connect(this, SIGNAL(SignalUpdatedToolsEvent()),
+            this, SLOT(SlotUpdatedToolsEvent()));
+
+    // by default assumes the system is not connected
+    SetControlWidgetsEnabled(false);
+}
+
+void mtsNDISerialControllerQtWidget::SetControlWidgetsEnabled(const bool enabled)
+{
+    // set the connected flag
+    QCBConnect->setChecked(enabled);
+    // enable/disable other buttons
+    QCBTrack->setEnabled(enabled);
+    QPBBeepButton->setEnabled(enabled);
+    QSBBeepCount->setEnabled(enabled);
 }
 
 void mtsNDISerialControllerQtWidget::SlotConnect(bool connect)
@@ -177,4 +231,66 @@ void mtsNDISerialControllerQtWidget::SlotTrack(bool track)
 void mtsNDISerialControllerQtWidget::SlotBeep(void)
 {
     Tracker.Beep(QSBBeepCount->value());
+}
+
+void mtsNDISerialControllerQtWidget::ConnectedEventHandler(const std::string & connected)
+{
+    mSerialPort = connected;
+    emit SignalConnectedEvent();
+}
+
+void mtsNDISerialControllerQtWidget::SlotConnectedEvent(void)
+{
+    if (mSerialPort.empty()) {
+        SetControlWidgetsEnabled(false);
+        QLPortName->setText("no connected");
+    } else {
+        SetControlWidgetsEnabled(true);
+        QLPortName->setText(mSerialPort.c_str());
+    }
+}
+
+void mtsNDISerialControllerQtWidget::TrackingEventHandler(const bool & tracking)
+{
+    std::cerr << " Qt tracking: " << tracking << std::endl;
+}
+
+void mtsNDISerialControllerQtWidget::UpdatedToolsEventHandler(void)
+{
+    emit SignalUpdatedToolsEvent();
+}
+
+void mtsNDISerialControllerQtWidget::SlotUpdatedToolsEvent(void)
+{
+    std::string trackerName = "NDI";
+        // ADV Tracker.Name(trackerName);
+
+    std::vector<std::string> toolNames;
+    Tracker.ToolNames(toolNames);
+
+    for (size_t i = 0; i < toolNames.size(); ++i) {
+        std::string name = toolNames[i];
+        Tool * tool;
+        tool = Tools.GetItem(name);
+        // if it's not found, it is new
+        if (!tool) {
+            tool = new Tool;
+            // cisst interface
+            tool->Interface = this->AddInterfaceRequired(name);
+            tool->Interface->AddFunction("GetPositionCartesian", tool->GetPositionCartesian);
+            mtsComponentManager * manager = mtsComponentManager::GetInstance();
+            manager->Connect(trackerName, name,
+                             this->GetName(), name);
+            // Qt widget added to grid
+            const int NB_COLS = 2;
+            int position = static_cast<int>(Tools.size());
+            int row = position / NB_COLS;
+            int col = position % NB_COLS;
+            std::cerr << name << " pos: " << position << " row " << row << " col " << col << std::endl;
+            tool->Widget = new vctQtWidgetFrameDoubleRead(vctQtWidgetRotationDoubleRead::OPENGL_WIDGET);
+            QGTools->addWidget(new QLabel(name.c_str()), 2 * row, col);
+            QGTools->addWidget(tool->Widget, 2 * row + 1, col);
+            Tools.AddItem(name, tool);
+        }
+    }
 }

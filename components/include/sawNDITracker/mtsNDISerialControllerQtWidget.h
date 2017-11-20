@@ -20,25 +20,29 @@ http://www.cisst.org/cisst/license.txt.
 #define _mtsNDISerialControllerQtWidget_h
 
 #include <cisstMultiTask/mtsComponent.h>
-#include <cisstParameterTypes/prmPositionCartesianGet.h>
-#include <cisstParameterTypes/prmStateJoint.h>
 #include <cisstVector/vctQtWidgetFrame.h>
+
+#include <cisstParameterTypes/prmPositionCartesianGet.h>
+
 #include <cisstMultiTask/mtsIntervalStatisticsQtWidget.h>
 #include <cisstMultiTask/mtsMessageQtWidget.h>
 
 #include <QWidget>
+#include <QLabel>
 #include <QCheckBox>
+#include <QPushButton>
 #include <QSpinBox>
+#include <QGridLayout>
 
 // Always include last
 #include <sawNDITracker/sawNDITrackerQtExport.h>
 
-class CISST_EXPORT mtsNDISerialControllerQtWidget : public QWidget, public mtsComponent
+class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsComponent
 {
     Q_OBJECT;
     CMN_DECLARE_SERVICES(CMN_DYNAMIC_CREATION_ONEARG, CMN_LOG_ALLOW_DEFAULT);
 
-public:
+ public:
     mtsNDISerialControllerQtWidget(const std::string & componentName, double periodInSeconds = 50.0 * cmn_ms);
     ~mtsNDISerialControllerQtWidget() {}
 
@@ -46,31 +50,38 @@ public:
     void Startup(void);
     void Cleanup(void);
 
-protected:
+ protected:
     virtual void closeEvent(QCloseEvent * event);
 
-private slots:
+ private slots:
     void timerEvent(QTimerEvent * event);
 
-private:
+ private:
     //! setup GUI
     void setupUi(void);
     int TimerPeriodInMilliseconds;
 
-protected:
+ protected:
+    std::string mSerialPort;
+
     struct {
         mtsFunctionRead  GetPeriodStatistics;
         mtsFunctionWrite Connect;
         mtsFunctionVoid  Disconnect;
+        mtsFunctionRead  Name;
+        mtsFunctionRead  ToolNames;
         mtsFunctionWrite Track;
         mtsFunctionWrite Beep;
     } Tracker;
 
-private:
+ private:
     // Control
     QCheckBox * QCBConnect;
+    QLabel * QLPortName;
     QCheckBox * QCBTrack;
+    QPushButton * QPBBeepButton;
     QSpinBox * QSBBeepCount;
+    QGridLayout * QGTools;
 
     // Timing
     mtsIntervalStatistics IntervalStatistics;
@@ -79,10 +90,34 @@ private:
     // Messages
     mtsMessageQtWidget * QMMessage;
 
+    void SetControlWidgetsEnabled(const bool enabled);
+
+    struct Tool {
+        vctQtWidgetFrameDoubleRead * Widget;
+        mtsInterfaceRequired * Interface;
+        mtsFunctionRead GetPositionCartesian;
+        prmPositionCartesianGet Position;
+    };
+
+    typedef cmnNamedMap<Tool> ToolMap;
+    ToolMap Tools;
+
  private slots:
     void SlotConnect(bool);
     void SlotTrack(bool);
     void SlotBeep(void);
+
+    void SlotConnectedEvent(void);
+    void SlotUpdatedToolsEvent(void);
+
+ signals:
+    void SignalConnectedEvent(void);
+    void SignalUpdatedToolsEvent(void);
+
+ private:
+    void ConnectedEventHandler(const std::string & connected);
+    void TrackingEventHandler(const bool & tracking);
+    void UpdatedToolsEventHandler(void);
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsNDISerialControllerQtWidget);
