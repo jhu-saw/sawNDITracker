@@ -219,6 +219,7 @@ void mtsNDISerialControllerQtWidget::SlotConnect(bool connect)
         std::string serialPortName; // empty means use default
         Tracker.Connect(serialPortName);
     } else {
+        QCBTrack->setChecked(false);
         Tracker.Disconnect();
     }
 }
@@ -247,12 +248,14 @@ void mtsNDISerialControllerQtWidget::SlotConnectedEvent(void)
     } else {
         SetControlWidgetsEnabled(true);
         QLPortName->setText(mSerialPort.c_str());
+        // some tools might have been added before connect so update now
+        SlotUpdatedToolsEvent();
     }
 }
 
 void mtsNDISerialControllerQtWidget::TrackingEventHandler(const bool & tracking)
 {
-    std::cerr << " Qt tracking: " << tracking << std::endl;
+    QCBTrack->setChecked(tracking);
 }
 
 void mtsNDISerialControllerQtWidget::UpdatedToolsEventHandler(void)

@@ -46,6 +46,8 @@ http://www.cisst.org/cisst/license.txt.
 #ifndef _mtsNDISerial_h
 #define _mtsNDISerial_h
 
+#include <cisstCommon/cmnPath.h>
+
 #include <cisstVector/vctFixedSizeVectorTypes.h>
 #include <cisstOSAbstraction/osaSerialPort.h>
 #include <cisstOSAbstraction/osaStopwatch.h>
@@ -204,6 +206,8 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     osaSerialPort mSerialPort;
     char mSerialBuffer[MAX_BUFFER_SIZE];
     char * mSerialBufferPointer;
+
+    cmnPath mDefinitionPath;
 
     typedef cmnNamedMap<Tool> ToolsType;
     ToolsType mTools;

@@ -119,8 +119,7 @@ int main(int argc, char * argv[])
     // create a main window to hold QWidgets
     QMainWindow * mainWindow = new QMainWindow();
     mainWindow->setCentralWidget(trackerWidget);
-    mainWindow->setWindowTitle("NDI Serial Controller");
-    mainWindow->resize(0,0);
+    mainWindow->setWindowTitle("sawNDITracker");
     mainWindow->show();
 
     // run Qt user interface

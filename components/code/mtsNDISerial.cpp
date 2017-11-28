@@ -22,8 +22,6 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstVector/vctDynamicMatrixTypes.h>
 
 #include <cisstMultiTask/mtsInterfaceProvided.h>
-#include <cisstMultiTask.h>
-
 #include <sawNDITracker/mtsNDISerial.h>
 
 CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsNDISerial, mtsTaskPeriodic, mtsTaskPeriodicConstructorArg);
@@ -52,6 +50,10 @@ void mtsNDISerial::Init(void)
     mStrayMarkers.Zeros();
     memset(mSerialBuffer, 0, MAX_BUFFER_SIZE);
     mSerialBufferPointer = mSerialBuffer;
+
+    // default search path to locate roms files / tool definitions
+    mDefinitionPath.Add(cmnPath::GetWorkingDirectory());
+    mDefinitionPath.Add(std::string(sawNDITracker_SOURCE_DIR) + "/../share/roms", cmnPath::TAIL);
 
     mConfigurationStateTable = new mtsStateTable(100, "Configuration");
     mConfigurationStateTable->SetAutomaticAdvance(false);
@@ -146,6 +148,18 @@ void mtsNDISerial::Configure(const std::string & filename)
         }
     }
 
+    // path to locate tool definitions
+    const Json::Value definitionPath = jsonConfig["definition-path"];
+    // preserve order from config file
+    for (int index = (definitionPath.size() - 1);
+         index >= 0;
+         --index) {
+        std::string path = definitionPath[index].asString();
+        if (path != "") {
+            mDefinitionPath.Add(path, cmnPath::HEAD);
+        }
+    }
+
     // get tools defined by user
     const Json::Value jsonTools = jsonConfig["tools"];
     for (unsigned int index = 0; index < jsonTools.size(); ++index) {
@@ -170,6 +184,22 @@ void mtsNDISerial::Configure(const std::string & filename)
         jsonValue = jsonTool["definition"];
         if (!jsonValue.empty()) {
             definition = jsonValue.asString();
+            // try to locate the file
+            if (!cmnPath::Exists(definition)) {
+                CMN_LOG_CLASS_INIT_VERBOSE << "Configure: definition file \"" << definition
+                                           << "\" not found, using definition-paths to locate it."
+                                           << std::endl;
+                std::string fullPath = mDefinitionPath.Find(definition);
+                if (fullPath != "") {
+                    CMN_LOG_CLASS_INIT_VERBOSE << "Configure: found definition file \"" << fullPath
+                                               << "\" for \"" << definition << "\"" << std::endl;
+                    definition = fullPath;
+                } else {
+                    CMN_LOG_CLASS_INIT_ERROR << "Configure: can't find definition file \"" << definition
+                                             << "\" using search path: " << mDefinitionPath << std::endl;
+                    return;
+                }
+            }
         } else {
             definition = "";
         }
@@ -178,47 +208,6 @@ void mtsNDISerial::Configure(const std::string & filename)
     }
 
 #if 0
-    cmnXMLPath config;
-    config.SetInputSource(filename);
-
-    // initialize serial port
-    std::string serialPort;
-    config.GetXMLValue("/tracker/controller", "@port", serialPort, "");
-
-    std::string toolDefinitionsDir;
-    config.GetXMLValue("/tracker/controller", "@definitions", toolDefinitionsDir, "");
-    // Check if path has trailing separator (slash or back-slash) and add
-    // one if necessary.
-    char lastChar = toolDefinitionsDir.at(toolDefinitionsDir.length()-1);
-#if (CISST_OS == CISST_WINDOWS)
-    if ((lastChar != '/') && (lastChar != '\\'))
-#else
-    if (lastChar != '/')
-#endif
-        toolDefinitionsDir.push_back('/');
-
-    // add tools
-    int numberOfTools = 0;
-    config.Query("count(/tracker/tools/*)", numberOfTools);
-    std::string toolName, toolSerial, toolDefinition;
-    Tool * tool;
-
-    for (int i = 0; i < numberOfTools; i++) {
-        std::stringstream context;
-        context << "/tracker/tools/tool[" << i+1 << "]";  // XML is one-based, adding one here
-        config.GetXMLValue(context.str().c_str(), "@name", toolName, "");
-        if (toolName.empty()) {
-            continue;
-        }
-        config.GetXMLValue(context.str().c_str(), "@serial", toolSerial);
-        config.GetXMLValue(context.str().c_str(), "@definition", toolDefinition);
-        if (toolDefinition.empty()) {
-            tool = AddTool(toolName, toolSerial.c_str());
-        } else {
-            std::string toolDefinitionPath = toolDefinitionsDir + toolDefinition;
-            tool = AddTool(toolName, toolSerial.c_str(), toolDefinitionPath.c_str());
-        }
-        if (tool) {
             context << "/tooltip";
             std::string rotation, translation;
             config.GetXMLValue(context.str().c_str(), "@rotation", rotation);
@@ -235,8 +224,6 @@ void mtsNDISerial::Configure(const std::string & filename)
                 }
             }
         }
-    }
-    mReadTimeout = timeout;
 #endif
 }
 
@@ -279,7 +266,7 @@ void mtsNDISerial::Connect(const std::string & serialPortName)
         mControllerInterface->SendWarning(this->GetName() + ": no serial port specified, trying to discover automatically");
         std::vector<std::string> ports;
 #if (CISST_OS == CISST_WINDOWS)
-        for (unsigned int i = 1; i <= 256; i++) {
+        for (size_t i = 1; i <= 256; i++) {
             std::ostringstream stream;
             stream << "COM" << i;
             ports.push_back(stream.str());
@@ -367,7 +354,7 @@ void mtsNDISerial::Connect(const std::string & serialPortName)
     PortHandlesInitialize();
 
     PortHandlesPassiveTools();
-    
+
     PortHandlesQuery();
 
     PortHandlesEnable();
@@ -379,19 +366,17 @@ void mtsNDISerial::Disconnect(void)
     ToggleTracking(false);
     // if we can't properly stop tracking, still set the flag
     mIsTracking = false;
-
     // close serial port
     mSerialPort.Close();
     // send event
     Events.Connected(std::string(""));
+    mControllerInterface->SendStatus(this->GetName() + ": serial port disconnected");
 }
 
 void mtsNDISerial::Run(void)
 {
     ProcessQueuedCommands();
-
     if (mIsTracking) {
-        std::cerr << ".";
         Track();
     }
 }
@@ -817,28 +802,6 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
     return tool;
 }
 
-/*
-mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
-                                           const std::string & serialNumber,
-
-{
-    char portHandle[3];
-    portHandle[2] = '\0';
-    Tool *toolPtr = 0;
-
-    // request port handle for passive tool
-    CommandSend("PHRQ *********1****");
-    if (ResponseRead()) {
-        sscanf(mSerialBuffer, "%2c", portHandle);
-        CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: loading " << name << " on port " << portHandle << std::endl;
-        LoadToolDefinitionFile(portHandle, toolDefinitionFile);
-        toolPtr = AddTool(name, serialNumber);
-    }
-    else
-        CMN_LOG_CLASS_INIT_ERROR << "AddTool: failed to receive port handle for passive tool" << std::endl;
-    return toolPtr;
-}
-*/
 
 std::string mtsNDISerial::GetToolName(const size_t index) const
 {
@@ -956,12 +919,9 @@ void mtsNDISerial::PortHandlesQuery(void)
             return;
         }
 
-        // check if tool exists, generate a name and add it otherwise
-        tool = CheckTool(serialNumber);
-        if (!tool) {
-            std::string name = std::string(mainType) + '-' + std::string(serialNumber);
-            tool = AddTool(name, serialNumber, "");
-        }
+        // generate a name and add (AddTool will skip existing tools)
+        std::string name = std::string(mainType) + '-' + std::string(serialNumber);
+        tool = AddTool(name, serialNumber, "");
 
         // update tool information
         sscanf(mSerialBuffer, "%2c%*1X%*1X%*2c%*2c%12c%3c%*8c%*2c%20c",
@@ -1050,12 +1010,12 @@ void mtsNDISerial::PortHandlesPassiveTools(void)
             CommandSend("PHRQ *********1****");
             if (ResponseRead()) {
                 sscanf(mSerialBuffer, "%2c", portHandle);
-                CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: loading "
+                CMN_LOG_CLASS_INIT_VERBOSE << "PortHandlesPassiveTools: loading "
                                            << toolIterator->first << " on port " << portHandle << std::endl;
                 LoadToolDefinitionFile(portHandle, toolIterator->second->Definition);
                 mPortToTool.AddItem(portHandle, toolIterator->second, CMN_LOG_LEVEL_INIT_ERROR);
             } else {
-                CMN_LOG_CLASS_INIT_ERROR << "AddTool: failed to receive port handle for passive tool" << std::endl;
+                CMN_LOG_CLASS_INIT_ERROR << "PortHandlesPassiveTools: failed to receive port handle for passive tool" << std::endl;
             }
         }
     }
@@ -1131,19 +1091,19 @@ void mtsNDISerial::Track(void)
         }
 
         if (strncmp(parsePointer, "MISSING", 7) == 0) {
-            CMN_LOG_CLASS_RUN_WARNING << "Track: " << tool->Name << " is missing" << std::endl;
+            CMN_LOG_CLASS_RUN_VERBOSE << "Track: " << tool->Name << " is missing" << std::endl;
             tool->TooltipPosition.SetValid(false);
             tool->MarkerPosition.SetValid(false);
             parsePointer += 7;
             parsePointer += 8;  // skip Port Status
         } else if (strncmp(parsePointer, "DISABLED", 8) == 0) {
-            CMN_LOG_CLASS_RUN_WARNING << "Track: " << tool->Name << " is disabled" << std::endl;
+            CMN_LOG_CLASS_RUN_VERBOSE << "Track: " << tool->Name << " is disabled" << std::endl;
             tool->TooltipPosition.SetValid(false);
             tool->MarkerPosition.SetValid(false);
             parsePointer += 8;
             parsePointer += 8;  // skip Port Status
         } else if (strncmp(parsePointer, "UNOCCUPIED", 10) == 0) {
-            CMN_LOG_CLASS_RUN_WARNING << "Track: " << tool->Name << " is unoccupied" << std::endl;
+            CMN_LOG_CLASS_RUN_VERBOSE << "Track: " << tool->Name << " is unoccupied" << std::endl;
             tool->TooltipPosition.SetValid(false);
             tool->MarkerPosition.SetValid(false);
             parsePointer += 10;
