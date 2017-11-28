@@ -60,14 +60,14 @@ mtsNDISerialControllerQtWidget::mtsNDISerialControllerQtWidget(const std::string
     startTimer(TimerPeriodInMilliseconds); // ms
 }
 
-void mtsNDISerialControllerQtWidget::Configure(const std::string &filename)
+void mtsNDISerialControllerQtWidget::Configure(const std::string & CMN_UNUSED(filename))
 {
-    CMN_LOG_CLASS_INIT_VERBOSE << "Configure: " << filename << std::endl;
+    CMN_LOG_CLASS_INIT_VERBOSE << "Configure" << std::endl;
 }
 
 void mtsNDISerialControllerQtWidget::Startup(void)
 {
-    CMN_LOG_CLASS_INIT_VERBOSE << "mtsNDISerialControllerQtWidget::Startup" << std::endl;
+    CMN_LOG_CLASS_INIT_VERBOSE << "Startup" << std::endl;
     if (!parent()) {
         show();
     }
@@ -76,7 +76,7 @@ void mtsNDISerialControllerQtWidget::Startup(void)
 void mtsNDISerialControllerQtWidget::Cleanup(void)
 {
     this->hide();
-    CMN_LOG_CLASS_INIT_VERBOSE << "mtsNDISerialControllerQtWidget::Cleanup" << std::endl;
+    CMN_LOG_CLASS_INIT_VERBOSE << "Cleanup" << std::endl;
 }
 
 void mtsNDISerialControllerQtWidget::closeEvent(QCloseEvent * event)

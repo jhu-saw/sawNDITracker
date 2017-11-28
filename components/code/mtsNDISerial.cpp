@@ -1172,10 +1172,11 @@ void mtsNDISerial::Track(void)
             mStrayMarkers[i][2] = markerPositions[i].X();
             mStrayMarkers[i][3] = markerPositions[i].Y();
             mStrayMarkers[i][4] = markerPositions[i].Z();
-
+#if 0
             std::cerr << "ReportStrayMarkers: " << i + 1
                       << "th marker visibility: " << markerVisibilities[i]
                       << ", position: " << markerPositions[i] << std::endl;
+#endif
         }
     }
     parsePointer += 4;  // skip System Status
