@@ -23,7 +23,7 @@ from cisstOSAbstractionPython import *
 from cisstMultiTaskPython import *
 from cisstParameterTypesPython import *
 
-name = 'Python NDITracker'
+name = 'NDITracker'
 period = 0.01
 
 manager = mtsManagerLocal.GetInstance()
@@ -38,35 +38,40 @@ time.sleep(0.5)
 services = proxy.GetManagerComponentServices()
 
 # create an instance of the tracker
+print('--> loading dynamic library')
 result = services.Load('sawNDITracker')
 assert result, 'Failed to load {} using component services'.format('sawNDITracker')
 
+print('--> create tracker component')
 args = mtsTaskPeriodicConstructorArg(name, period, False, 256)
 result = services.ComponentCreate('mtsNDISerial', args)
 assert result, 'Failed to create {} of type {}'.format(name, 'mtsNDISerial')
 
 # Configure the component
+print('--> configure tracker component')
 component = manager.GetComponent(name)
 component.Configure(cmd_line_args.json.name)
 
 # create the main interface to the tracker
+print('--> create python interface for tracker')
 controller = proxy.AddInterfaceRequiredAndConnect((name, 'Controller'))
-
-print(controller)
 
 component.CreateAndWait(5.0)
 component.StartAndWait(5.0)
 
 # initialize controller
+print ('--> connect tracker to port')
 controller.Connect(cmd_line_args.port)
 time.sleep(2.0)
 
 # see if the device is actually connected
+print('--> make the tracker beep to make sure everything is ok')
 controller.Beep(1)
 time.sleep(1.0)
 controller.Beep(2)
 
 # create an interface for the tracked pointer body
+print('--> assuming there is a rigid body named "Pointer", create an interface and track')
 trackedBodyName = 'Pointer'
 trackedBody = proxy.AddInterfaceRequiredAndConnect((name, trackedBodyName))
 
@@ -74,7 +79,7 @@ trackedBody = proxy.AddInterfaceRequiredAndConnect((name, trackedBodyName))
 controller.ToggleTracking(True)
 controller.Beep(2)
 
-print('Controller tracking status: ' + str(controller.IsTracking()))
+print('--> controller tracking status: ' + str(controller.IsTracking()))
 
 while True:
     pose = trackedBody.GetPositionCartesian()
