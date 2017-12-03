@@ -1,5 +1,21 @@
+#!/usr/bin/env python
+
 import os
 import time
+import argparse
+
+# command line arguments
+parser = argparse.ArgumentParser(description='cisst/sawNDITracker')
+parser.add_argument('--port', dest='port', required=True,
+                    help='serial port (string with quotes)')
+
+parser.add_argument('--json', dest='json', required=True, type=argparse.FileType('r'),
+                    help='json configuration file')
+
+cmd_line_args = parser.parse_args()
+
+print('- port: ' + cmd_line_args.port)
+print('- json: ' + cmd_line_args.json.name)
 
 from cisstCommonPython import *
 from cisstVectorPython import *
@@ -7,10 +23,8 @@ from cisstOSAbstractionPython import *
 from cisstMultiTaskPython import *
 from cisstParameterTypesPython import *
 
-name = 'My Tracker'
+name = 'Python NDITracker'
 period = 0.01
-# load the NDI config file located in the same directory as this python script.
-configuration = '/home/adeguet1/catkin_ws/src/cisst-saw/sawNDITracker/share/ndi-active-tools.json'
 
 manager = mtsManagerLocal.GetInstance()
 manager.CreateAllAndWait(5.0)
@@ -31,17 +45,20 @@ args = mtsTaskPeriodicConstructorArg(name, period, False, 256)
 result = services.ComponentCreate('mtsNDISerial', args)
 assert result, 'Failed to create {} of type {}'.format(name, 'mtsNDISerial')
 
+# Configure the component
 component = manager.GetComponent(name)
-component.Configure(configuration)
+component.Configure(cmd_line_args.json.name)
 
 # create the main interface to the tracker
 controller = proxy.AddInterfaceRequiredAndConnect((name, 'Controller'))
+
+print(controller)
 
 component.CreateAndWait(5.0)
 component.StartAndWait(5.0)
 
 # initialize controller
-controller.Connect("/dev/ttyS0")
+controller.Connect(cmd_line_args.port)
 time.sleep(2.0)
 
 # see if the device is actually connected
@@ -57,11 +74,11 @@ trackedBody = proxy.AddInterfaceRequiredAndConnect((name, trackedBodyName))
 controller.ToggleTracking(True)
 controller.Beep(2)
 
-print 'Controller tracking status: ' + str(controller.IsTracking())
+print('Controller tracking status: ' + str(controller.IsTracking()))
 
 while True:
     pose = trackedBody.GetPositionCartesian()
     if pose.GetValid():  # if visible
-        print pose.Position().Translation()
+        print(trackedBodyName + ': ' + str(pose.Position().Translation()))
     else:
-        print trackedBodyName + 'is not visible'
+        print(trackedBodyName + 'is not visible')

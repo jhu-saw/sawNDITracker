@@ -46,6 +46,8 @@ if (cisst_FOUND)
   # include_directories(include)
   include_directories (${catkin_INCLUDE_DIRS})
 
+  file (MAKE_DIRECTORY "${CATKIN_DEVEL_PREFIX}/include")
+
   catkin_package (INCLUDE_DIRS "${CATKIN_DEVEL_PREFIX}/include"
                   CATKIN_DEPENDS cisst_ros_bridge geometry_msgs roscpp std_msgs)
 
