@@ -163,8 +163,9 @@ void mtsNDISerial::Configure(const std::string & filename)
     // get tools defined by user
     const Json::Value jsonTools = jsonConfig["tools"];
     for (unsigned int index = 0; index < jsonTools.size(); ++index) {
-        std::string name, serialNumber, definition;
+        std::string name, serialNumber, definition, reference;
         const Json::Value jsonTool = jsonTools[index];
+        // --- name
         jsonValue = jsonTool["name"];
         if (!jsonValue.empty()) {
             name = jsonValue.asString();
@@ -173,6 +174,7 @@ void mtsNDISerial::Configure(const std::string & filename)
                                      << index << "]" << std::endl;
             return;
         }
+        // --- serial number
         jsonValue = jsonTool["serial-number"];
         if (!jsonValue.empty()) {
             serialNumber = jsonValue.asString();
@@ -181,6 +183,7 @@ void mtsNDISerial::Configure(const std::string & filename)
                                      << index << "]" << std::endl;
             return;
         }
+        // --- definition file (rom file)
         jsonValue = jsonTool["definition"];
         if (!jsonValue.empty()) {
             definition = jsonValue.asString();
@@ -203,28 +206,17 @@ void mtsNDISerial::Configure(const std::string & filename)
         } else {
             definition = "";
         }
-
-        AddTool(name, serialNumber, definition);
-    }
-
-#if 0
-            context << "/tooltip";
-            std::string rotation, translation;
-            config.GetXMLValue(context.str().c_str(), "@rotation", rotation);
-            config.GetXMLValue(context.str().c_str(), "@translation", translation);
-            if (!rotation.empty()) {
-                CMN_LOG_CLASS_INIT_ERROR << "Configure: tooltip rotation will not be applied (not implemented)" << std::endl;
-            }
-            if (!translation.empty()) {
-                std::stringstream offset(translation);
-                double value;
-                for (unsigned int j = 0; offset >> value; j++) {
-                    tool->TooltipOffset[j] = value;
-                    offset.ignore(1);
-                }
-            }
+        // --- reference frame
+        jsonValue = jsonTool["reference"];
+        if (!jsonValue.empty()) {
+            reference = jsonValue.asString();
+        } else {
+            CMN_LOG_CLASS_INIT_VERBOSE << "Configure: no reference frame \"for\" for tools["
+                                     << index << "].  Position will be reported wrt Camera frame" << std::endl;
         }
-#endif
+
+        AddTool(name, serialNumber, definition, reference);
+    }
 }
 
 void mtsNDISerial::Connect(const std::string & serialPortName)
@@ -761,7 +753,8 @@ mtsNDISerial::Tool * mtsNDISerial::CheckTool(const std::string & serialNumber)
 
 mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
                                            const std::string & serialNumber,
-                                           const std::string & toolDefinitionFile)
+                                           const std::string & toolDefinitionFile,
+                                           const std::string & reference)
 {
     Tool * tool = CheckTool(serialNumber);
 
@@ -775,6 +768,7 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
     tool->Name = name;
     tool->SerialNumber = serialNumber;
     tool->Definition = toolDefinitionFile;
+    tool->ReferenceFrame = reference;
 
     if (!mTools.AddItem(tool->Name, tool, CMN_LOG_LEVEL_INIT_ERROR)) {
         CMN_LOG_CLASS_INIT_ERROR << "AddTool: no tool created, duplicate name exists: " << name << std::endl;
@@ -787,10 +781,29 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
     tool->Interface = AddInterfaceProvided(name);
     if (tool->Interface) {
         tool->Interface->AddCommandRead(&mtsStateTable::GetIndexReader, &StateTable, "GetTableIndex");
-        StateTable.AddData(tool->TooltipPosition, name + "Position");
-        tool->Interface->AddCommandReadState(StateTable, tool->TooltipPosition, "GetPositionCartesian");
-        StateTable.AddData(tool->MarkerPosition, name + "Marker");
-        tool->Interface->AddCommandReadState(StateTable, tool->MarkerPosition, "GetMarkerCartesian");
+        // position wrt camera (raw position)
+        StateTable.AddData(tool->PositionLocal, name + "PositionLocal");
+        tool->Interface->AddCommandReadState(StateTable, tool->PositionLocal, "GetPositionCartesianLocal");
+        tool->PositionLocal.SetMovingFrame(name);
+        tool->PositionLocal.SetReferenceFrame("Camera");
+        // position wrt reference frame
+        StateTable.AddData(tool->Position, name + "Position");
+        tool->Interface->AddCommandReadState(StateTable, tool->Position, "GetPositionCartesian");
+        tool->Position.SetMovingFrame(name);
+        if (tool->ReferenceFrame != "") {
+            tool->ReferenceTool = mTools.GetItem(tool->ReferenceFrame, CMN_LOG_LEVEL_INIT_ERROR);
+            if (!tool->ReferenceTool) {
+                CMN_LOG_CLASS_INIT_ERROR << "AddTool: can't find reference \"" << tool->ReferenceFrame
+                                         << "\" for tool \"" << name
+                                         << "\".  Make sure reference frames/tools are create before"
+                                         << std::endl;
+                tool->Position.SetReferenceFrame("undefined");
+            } else {
+                tool->Position.SetReferenceFrame(tool->ReferenceFrame);
+            }
+        } else {
+            tool->Position.SetReferenceFrame("Camera");
+        }
     }
 
     // update list of existing tools
@@ -921,7 +934,7 @@ void mtsNDISerial::PortHandlesQuery(void)
 
         // generate a name and add (AddTool will skip existing tools)
         std::string name = std::string(mainType) + '-' + std::string(serialNumber);
-        tool = AddTool(name, serialNumber, "");
+        tool = AddTool(name, serialNumber, "", "");
 
         // update tool information
         sscanf(mSerialBuffer, "%2c%*1X%*1X%*2c%*2c%12c%3c%*8c%*2c%20c",
@@ -1092,20 +1105,20 @@ void mtsNDISerial::Track(void)
 
         if (strncmp(parsePointer, "MISSING", 7) == 0) {
             CMN_LOG_CLASS_RUN_VERBOSE << "Track: " << tool->Name << " is missing" << std::endl;
-            tool->TooltipPosition.SetValid(false);
-            tool->MarkerPosition.SetValid(false);
+            tool->PositionLocal.SetValid(false);
+            tool->Position.SetValid(false);
             parsePointer += 7;
             parsePointer += 8;  // skip Port Status
         } else if (strncmp(parsePointer, "DISABLED", 8) == 0) {
             CMN_LOG_CLASS_RUN_VERBOSE << "Track: " << tool->Name << " is disabled" << std::endl;
-            tool->TooltipPosition.SetValid(false);
-            tool->MarkerPosition.SetValid(false);
+            tool->PositionLocal.SetValid(false);
+            tool->Position.SetValid(false);
             parsePointer += 8;
             parsePointer += 8;  // skip Port Status
         } else if (strncmp(parsePointer, "UNOCCUPIED", 10) == 0) {
             CMN_LOG_CLASS_RUN_VERBOSE << "Track: " << tool->Name << " is unoccupied" << std::endl;
-            tool->TooltipPosition.SetValid(false);
-            tool->MarkerPosition.SetValid(false);
+            tool->PositionLocal.SetValid(false);
+            tool->Position.SetValid(false);
             parsePointer += 10;
             parsePointer += 8;  // skip Port Status
         } else {
@@ -1121,12 +1134,8 @@ void mtsNDISerial::Track(void)
             toolPosition.Multiply(cmn_mm); // convert to whatever cisst is using internally
             tooltipPosition.Translation() = toolPosition;
             tool->ErrorRMS /= 10000.0; // implicit format -x.xxxx
-            tool->MarkerPosition.Position() = tooltipPosition; // Tool Frame Position = Orientation + Frame Origin
-            tool->MarkerPosition.SetValid(true);
-
-            tooltipPosition.Translation() += tooltipPosition.Rotation() * tool->TooltipOffset;  // apply tooltip offset
-            tool->TooltipPosition.Position() = tooltipPosition;  // Tool Tip Position = Orientation + Tooltip
-            tool->TooltipPosition.SetValid(true);
+            tool->PositionLocal.Position() = tooltipPosition;
+            tool->PositionLocal.SetValid(true);
         }
         sscanf(parsePointer, "%08X", &(tool->FrameNumber));
         parsePointer += 8;
@@ -1136,6 +1145,27 @@ void mtsNDISerial::Track(void)
             return;
         }
         parsePointer += 1;  // skip line feed (LF)
+    }
+
+    // update tool positions based on reference frame (if any)
+    const ToolsType::iterator end = mTools.end();
+    ToolsType::iterator toolIterator;
+    for (toolIterator = mTools.begin();
+         toolIterator != end;
+         ++toolIterator) {
+        Tool * tool = toolIterator->second;
+        if (tool->PositionLocal.Valid()) {
+            if (tool->ReferenceTool) {
+                // set as valid and change reference frame
+                tool->Position.SetValid(true);
+                tool->Position.Position() = tool->ReferenceTool->Position.Position().Inverse()
+                    * tool->PositionLocal.Position();
+            } else {
+                tool->Position = tool->PositionLocal;  // same
+            }
+        } else {
+            tool->Position.SetValid(false);
+        }
     }
 
     if (mTrackStrayMarkers) {
@@ -1251,8 +1281,9 @@ void mtsNDISerial::ReportStrayMarkers(void)
 }
 
 
-mtsNDISerial::Tool::Tool(void) :
-    TooltipOffset(0.0)
+mtsNDISerial::Tool::Tool(void):
+    ReferenceFrame(""),
+    ReferenceTool(0)
 {
     PortHandle[2] = '\0';
     MainType[2] = '\0';

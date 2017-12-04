@@ -75,9 +75,12 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
         std::string Name;
         unsigned int FrameNumber;
         double ErrorRMS;
+
         mtsInterfaceProvided * Interface;
-        prmPositionCartesianGet TooltipPosition;
-        prmPositionCartesianGet MarkerPosition;
+        prmPositionCartesianGet PositionLocal; // wrt camera
+        prmPositionCartesianGet Position; // wrt reference frame
+        std::string ReferenceFrame;
+        Tool * ReferenceTool;
 
         char PortHandle[3];
         // PHINF 0001
@@ -88,7 +91,6 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
         // PHINF 0004
         char PartNumber[21];
         std::string Definition;
-        vct3 TooltipOffset;
     };
 
  public:
@@ -186,7 +188,8 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     Tool * CheckTool(const std::string & serialNumber);
     Tool * AddTool(const std::string & name,
                    const std::string & serialNumber,
-                   const std::string & toolDefinitionFile);
+                   const std::string & toolDefinitionFile,
+                   const std::string & reference);
 
     void ToggleTracking(const bool & track);
     void ToggleStrayMarkers(const bool & stray);

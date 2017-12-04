@@ -25,6 +25,8 @@ http://www.cisst.org/cisst/license.txt.
 #include <QMessageBox>
 
 // cisst
+#include <cisstCommon/cmnUnits.h>
+#include <cisstOSAbstraction/osaSleep.h>
 #include <cisstMultiTask/mtsInterfaceRequired.h>
 #include <cisstMultiTask/mtsManagerLocal.h>
 #include <cisstParameterTypes/prmForceCartesianSet.h>
@@ -290,7 +292,12 @@ void mtsNDISerialControllerQtWidget::SlotUpdatedToolsEvent(void)
             int row = position / NB_COLS;
             int col = position % NB_COLS;
             tool->Widget = new vctQtWidgetFrameDoubleRead(vctQtWidgetRotationDoubleRead::OPENGL_WIDGET);
-            QGTools->addWidget(new QLabel(name.c_str()), 2 * row, col);
+            // busy wait until this is connected to retrieve moving/reference frames
+            while (!tool->GetPositionCartesian(tool->Position)) {
+                osaSleep(100.0 * cmn_ms); 
+            }
+            std::string label = tool->Position.MovingFrame() + " wrt " + tool->Position.ReferenceFrame();
+            QGTools->addWidget(new QLabel(label.c_str()), 2 * row, col);
             QGTools->addWidget(tool->Widget, 2 * row + 1, col);
             Tools.AddItem(name, tool);
         }
