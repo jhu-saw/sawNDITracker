@@ -19,8 +19,9 @@ http://www.cisst.org/cisst/license.txt.
 #ifndef _mtsNDISerialROS_h
 #define _mtsNDISerialROS_h
 
-#include <cisstMultiTask/mtsTaskFromSignal.h>
+class mtsROSBridge;
 
+#include <cisstMultiTask/mtsTaskFromSignal.h>
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
 
 class mtsNDISerialROS: public mtsTaskFromSignal
@@ -31,22 +32,27 @@ class mtsNDISerialROS: public mtsTaskFromSignal
     mtsNDISerialROS(const std::string & componentName);
     mtsNDISerialROS(const mtsTaskContinuousConstructorArg & argument);
 
-    ~mtsNDISerialROS() {}
+    inline ~mtsNDISerialROS() {}
 
-    void Configure(const std::string & filename = "");
+    inline void Configure(const std::string & CMN_UNUSED(filename)) {};
     void Startup(void);
     void Run(void);
     void Cleanup(void);
 
+    void AddROSTopics(const std::string & rosBridgeName,
+                      const std::string & trackerName,
+                      const std::string & rosNamespace);
  private:
     void Init(void);
-    
+
     struct {
-        mtsFunctionRead Name;
         mtsFunctionRead ToolNames;
     } Tracker;
 
-    std::list<std::string> Tools;
+    std::string mROSBridgeName;
+    std::string mTrackerName;
+    std::string mROSNamespace;
+    mtsROSBridge * mROSBridge;
 
     void ConnectedEventHandler(const std::string & connected);
     void UpdatedToolsEventHandler(void);

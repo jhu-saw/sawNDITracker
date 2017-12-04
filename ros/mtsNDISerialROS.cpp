@@ -22,6 +22,9 @@ http://www.cisst.org/cisst/license.txt.
 // cisst
 #include "mtsNDISerialROS.h"
 
+#include <ros/ros.h>
+#include <cisst_ros_bridge/mtsROSBridge.h>
+
 #include <cisstMultiTask/mtsInterfaceRequired.h>
 #include <cisstMultiTask/mtsManagerLocal.h>
 
@@ -40,10 +43,11 @@ mtsNDISerialROS::mtsNDISerialROS(const mtsTaskContinuousConstructorArg & argumen
 }
 void mtsNDISerialROS::Init(void)
 {
+    mROSBridge = 0;
+
     // Setup CISST Interface
     mtsInterfaceRequired * interfaceRequired = AddInterfaceRequired("Controller");
     if (interfaceRequired) {
-        // ADV        interfaceRequired->AddFunction("Name", Tracker.Name);
         interfaceRequired->AddFunction("ToolNames", Tracker.ToolNames);
         interfaceRequired->AddEventHandlerWrite(&mtsNDISerialROS::ConnectedEventHandler,
                                                 this, "Connected");
@@ -52,9 +56,39 @@ void mtsNDISerialROS::Init(void)
     }
 }
 
-void mtsNDISerialROS::Configure(const std::string & filename)
+void mtsNDISerialROS::AddROSTopics(const std::string & rosBridgeName,
+                                   const std::string & trackerName,
+                                   const std::string & rosNamespace)
 {
-    CMN_LOG_CLASS_INIT_VERBOSE << "Configure: " << filename << std::endl;
+    mROSBridgeName = rosBridgeName;
+    mTrackerName = trackerName;
+    mROSNamespace = rosNamespace;
+
+    mtsComponentManager * manager = mtsComponentManager::GetInstance();
+    mtsComponent * component = manager->GetComponent(mROSBridgeName);
+    if (!component) {
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to find any component with name \""
+                                 << mROSBridgeName << "\"" << std::endl;
+        return;
+    }
+
+    mROSBridge = dynamic_cast<mtsROSBridge *>(component);
+    if (!component) {
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: component with name \""
+                                 << mROSBridgeName
+                                 << "\" doesn't seem to be of type \"mtsROSBridge\""
+                                 << std::endl;
+        return;
+    }
+
+    // add some controller ROS topics
+    mROSBridge->AddSubscriberToCommandWrite<std::string, std_msgs::String>
+        ("Controller", "Connect", mROSNamespace + "/connect");
+    mROSBridge->AddPublisherFromEventWrite<std::string, std_msgs::String>
+        ("Controller", "Connected", mROSNamespace + "/connected");
+
+    manager->Connect(mROSBridgeName, "Controller",
+                     mTrackerName, "Controller");
 }
 
 void mtsNDISerialROS::Startup(void)
@@ -81,37 +115,25 @@ void mtsNDISerialROS::ConnectedEventHandler(const std::string & connected)
 
 void mtsNDISerialROS::UpdatedToolsEventHandler(void)
 {
-    std::string trackerName = "NDI";
-        // ADV Tracker.Name(trackerName);
+    if (!mROSBridge) {
+        CMN_LOG_CLASS_INIT_ERROR << "UpdatedToolsEventHandler: null pointer for mROSBridge.  This pointer should have been initialized in method AddROSTopics" << std::endl;
+        return;
+    }
+
+    mtsComponentManager * manager = mtsComponentManager::GetInstance();
 
     std::vector<std::string> toolNames;
     Tracker.ToolNames(toolNames);
-
-#if 0
     for (size_t i = 0; i < toolNames.size(); ++i) {
         std::string name = toolNames[i];
-        Tool * tool;
-        tool = Tools.GetItem(name);
-        // if it's not found, it is new
-        if (!tool) {
-            tool = new Tool;
-            // cisst interface
-            tool->Interface = this->AddInterfaceRequired(name);
-            tool->Interface->AddFunction("GetPositionCartesian", tool->GetPositionCartesian);
-            mtsComponentManager * manager = mtsComponentManager::GetInstance();
-            manager->Connect(trackerName, name,
-                             this->GetName(), name);
-            // Qt widget added to grid
-            const int NB_COLS = 2;
-            int position = static_cast<int>(Tools.size());
-            int row = position / NB_COLS;
-            int col = position % NB_COLS;
-            std::cerr << name << " pos: " << position << " row " << row << " col " << col << std::endl;
-            tool->Widget = new vctQtWidgetFrameDoubleRead(vctQtWidgetRotationDoubleRead::OPENGL_WIDGET);
-            QGTools->addWidget(new QLabel(name.c_str()), 2 * row, col);
-            QGTools->addWidget(tool->Widget, 2 * row + 1, col);
-            Tools.AddItem(name, tool);
+        std::string rosName = name;
+        std::replace(rosName.begin(), rosName.end(), '-', '_');
+        // check if there's already a required interface with that name
+        if (!(mROSBridge->GetInterfaceRequired(name))) {
+            mROSBridge->AddPublisherFromCommandRead<prmPositionCartesianGet, geometry_msgs::PoseStamped>
+                (name, "GetPositionCartesian", mROSNamespace + "/" + rosName + "/position_cartesian_current");
+            manager->Connect(mROSBridgeName, name,
+                             mTrackerName, name);
         }
     }
-#endif
 }

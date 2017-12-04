@@ -2,11 +2,10 @@
 /* ex: set filetype=cpp softtabstop=4 shiftwidth=4 tabstop=4 cindent expandtab: */
 
 /*
-
   Author(s):  Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2017 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -27,7 +26,6 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstCommon/cmnUnits.h>
 #include <cisstCommon/cmnCommandLineOptions.h>
 
-#include <cisstOSAbstraction/osaThreadedLogFile.h>
 #include <cisstMultiTask/mtsTaskManager.h>
 
 #include <sawNDITracker/mtsNDISerial.h>
@@ -55,7 +53,7 @@ int main(int argc, char * argv[])
                               "json configuration file",
                               cmnCommandLineOptions::OPTIONAL_OPTION, &configFile);
 
-    options.AddOptionOneValue("p", "serial-port",
+    options.AddOptionOneValue("s", "serial-port",
                               "serial port (e.g. /dev/ttyUSB0, COM...)",
                               cmnCommandLineOptions::OPTIONAL_OPTION, &port);
 
@@ -78,7 +76,6 @@ int main(int argc, char * argv[])
     if (port != "") {
         tracker->SetSerialPort(port);
     }
-    mtsNDISerialControllerQtWidget * trackerWidget = new mtsNDISerialControllerQtWidget("NDI Widget");
 
     // configure the components
     std::string configPath = "";
@@ -106,9 +103,10 @@ int main(int argc, char * argv[])
     // add the components to the component manager
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
     componentManager->AddComponent(tracker);
-    componentManager->AddComponent(trackerWidget);
 
-    // connect the components, e.g. RequiredInterface -> ProvidedInterface
+    // Qt widget
+    mtsNDISerialControllerQtWidget * trackerWidget = new mtsNDISerialControllerQtWidget("NDI Widget");
+    componentManager->AddComponent(trackerWidget);
     componentManager->Connect(trackerWidget->GetName(), "Controller",
                               tracker->GetName(), "Controller");
 

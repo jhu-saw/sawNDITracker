@@ -67,6 +67,7 @@ if (cisst_FOUND)
                            ${sawNDITracker_LIBRARIES}
                            ${sawNDITrackerQt_LIBRARIES}
                            ${QT_LIBRARIES}
+			   ${catkin_LIBRARIES}
                            )
 
     # link against cisst libraries (and dependencies)

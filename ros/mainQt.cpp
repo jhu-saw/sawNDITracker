@@ -2,11 +2,10 @@
 /* ex: set filetype=cpp softtabstop=4 shiftwidth=4 tabstop=4 cindent expandtab: */
 
 /*
+  Author(s):  Anton Deguet
+  Created on: 2017-12-04
 
-  Author(s):  Ali Uneri
-  Created on: 2009-10-13
-
-  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2017 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -27,11 +26,14 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstCommon/cmnUnits.h>
 #include <cisstCommon/cmnCommandLineOptions.h>
 
-#include <cisstOSAbstraction/osaThreadedLogFile.h>
 #include <cisstMultiTask/mtsTaskManager.h>
 
 #include <sawNDITracker/mtsNDISerial.h>
 #include <sawNDITracker/mtsNDISerialControllerQtWidget.h>
+
+#include "mtsNDISerialROS.h"
+#include <ros/ros.h>
+#include <cisst_ros_bridge/mtsROSBridge.h>
 
 #include <QApplication>
 #include <QMainWindow>
@@ -50,14 +52,25 @@ int main(int argc, char * argv[])
     cmnCommandLineOptions options;
     std::string port;
     std::string configFile;
+    std::string rosNamespace = "/ndi";
+    double rosPeriod = 20.0 * cmn_ms;
 
     options.AddOptionOneValue("j", "json-config",
                               "json configuration file",
                               cmnCommandLineOptions::OPTIONAL_OPTION, &configFile);
 
-    options.AddOptionOneValue("p", "serial-port",
+    options.AddOptionOneValue("s", "serial-port",
                               "serial port (e.g. /dev/ttyUSB0, COM...)",
                               cmnCommandLineOptions::OPTIONAL_OPTION, &port);
+
+    options.AddOptionOneValue("n", "ros-namespace",
+                              "ROS namespace to prefix all topics, must have start and end \"/\" (default /ndi/)",
+                              cmnCommandLineOptions::OPTIONAL_OPTION, &rosNamespace);
+
+    options.AddOptionOneValue("p", "ros-period",
+                              "period in seconds to read all arms/teleop components and publish (default 0.02, 20 ms, 200Hz).  There is no point to have a period higher than the tracker's period",
+                              cmnCommandLineOptions::OPTIONAL_OPTION, &rosPeriod);
+
 
     // check that all required options have been provided
     std::string errorMessage;
@@ -78,7 +91,6 @@ int main(int argc, char * argv[])
     if (port != "") {
         tracker->SetSerialPort(port);
     }
-    mtsNDISerialControllerQtWidget * trackerWidget = new mtsNDISerialControllerQtWidget("NDI Widget");
 
     // configure the components
     std::string configPath = "";
@@ -106,12 +118,29 @@ int main(int argc, char * argv[])
     // add the components to the component manager
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
     componentManager->AddComponent(tracker);
-    componentManager->AddComponent(trackerWidget);
 
-    // connect the components, e.g. RequiredInterface -> ProvidedInterface
+    // Qt widget
+    mtsNDISerialControllerQtWidget * trackerWidget = new mtsNDISerialControllerQtWidget("NDI Widget");
+    componentManager->AddComponent(trackerWidget);
     componentManager->Connect(trackerWidget->GetName(), "Controller",
                               tracker->GetName(), "Controller");
 
+    // ROS topics
+    // ros wrapper for arms and optionally IOs
+    std::string bridgeName = "sawNDITracker_" + rosNamespace;
+    bridgeName = ros::names::clean(bridgeName);
+    std::replace(bridgeName.begin(), bridgeName.end(), '/', '_');
+    std::replace(bridgeName.begin(), bridgeName.end(), '-', '_');
+    std::replace(bridgeName.begin(), bridgeName.end(), '.', '_');
+    mtsROSBridge rosBridge(bridgeName, rosPeriod, true);
+    componentManager->AddComponent(&rosBridge);
+
+    mtsNDISerialROS * trackerROS = new mtsNDISerialROS("NDI ROS");
+    componentManager->AddComponent(trackerROS);
+    trackerROS->AddROSTopics(rosBridge.GetName(), tracker->GetName(), rosNamespace);
+    componentManager->Connect(trackerROS->GetName(), "Controller",
+                              tracker->GetName(), "Controller");
+    
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);
     componentManager->StartAllAndWait(5.0 * cmn_s);

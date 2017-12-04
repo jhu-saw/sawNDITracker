@@ -289,7 +289,6 @@ void mtsNDISerialControllerQtWidget::SlotUpdatedToolsEvent(void)
             int position = static_cast<int>(Tools.size());
             int row = position / NB_COLS;
             int col = position % NB_COLS;
-            std::cerr << name << " pos: " << position << " row " << row << " col " << col << std::endl;
             tool->Widget = new vctQtWidgetFrameDoubleRead(vctQtWidgetRotationDoubleRead::OPENGL_WIDGET);
             QGTools->addWidget(new QLabel(name.c_str()), 2 * row, col);
             QGTools->addWidget(tool->Widget, 2 * row + 1, col);
