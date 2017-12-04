@@ -70,20 +70,27 @@ controller.Beep(1)
 time.sleep(1.0)
 controller.Beep(2)
 
-# create an interface for the tracked pointer body
-print('--> assuming there is a rigid body named "Pointer", create an interface and track')
-trackedBodyName = 'Pointer'
-trackedBody = proxy.AddInterfaceRequiredAndConnect((name, trackedBodyName))
+# look for all tools
+toolNames = controller.ToolNames()
 
-#enable tracking
+# create and connect interface for each tool
+print ('--> connect interfaces for all tools')
+tools = {}
+for toolName in toolNames:
+    print('  -- found tool: ' + toolName)
+    tools[toolName] = (proxy.AddInterfaceRequiredAndConnect((name, toolName)))
+
+# enable tracking
+print('--> enabling tracking and beep twice')
 controller.ToggleTracking(True)
 controller.Beep(2)
 
-print('--> controller tracking status: ' + str(controller.IsTracking()))
-
+# display positions
 while True:
-    pose = trackedBody.GetPositionCartesian()
-    if pose.GetValid():  # if visible
-        print(trackedBodyName + ': ' + str(pose.Position().Translation()))
-    else:
-        print(trackedBodyName + 'is not visible')
+    time.sleep(0.5)
+    for toolName, toolInterface in tools.items():
+        pose = toolInterface.GetPositionCartesian()
+        if pose.GetValid():  # if visible
+            print(toolName + ': ' + str(pose.Position().Translation()))
+        else:
+            print(toolName + ' is not visible')
