@@ -345,8 +345,8 @@ void mtsNDISerial::Connect(const std::string & serialPortName)
     } else {
         mControllerInterface->SendError(this->GetName() + ": device firmware is not what we're expecting, got: "
                                         + mSerialBuffer);
-        mReadTimeout = previousTimeout;
-        return;
+        // mReadTimeout = previousTimeout;
+        // return;
     }
 
     mReadTimeout = previousTimeout;
