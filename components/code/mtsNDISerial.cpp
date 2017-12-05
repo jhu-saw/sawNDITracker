@@ -1084,9 +1084,9 @@ void mtsNDISerial::Track(void)
     vctFrm3 tooltipPosition;
 
     if (!mTrackStrayMarkers) {
-        CommandSend("TX 0001");
+        CommandSend("TX 0801");
     } else {
-        CommandSend("TX 1001");
+        CommandSend("TX 1801");
     }
     ResponseRead();
     parsePointer = mSerialBuffer;

@@ -41,13 +41,6 @@ http://www.cisst.org/cisst/license.txt.
 
 int main(int argc, char * argv[])
 {
-    // log configuration
-    cmnLogger::SetMask(CMN_LOG_ALLOW_ALL);
-    cmnLogger::SetMaskFunction(CMN_LOG_ALLOW_ALL);
-    cmnLogger::SetMaskDefaultLog(CMN_LOG_ALLOW_ALL);
-    cmnLogger::SetMaskClassMatching("mtsNDISerial", CMN_LOG_ALLOW_ALL);
-    cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
-
     // parse options
     cmnCommandLineOptions options;
     std::string port;
@@ -62,6 +55,9 @@ int main(int argc, char * argv[])
     options.AddOptionOneValue("s", "serial-port",
                               "serial port (e.g. /dev/ttyUSB0, COM...)",
                               cmnCommandLineOptions::OPTIONAL_OPTION, &port);
+
+    options.AddOptionNoValue("l", "log-serial",
+                             "log all serial port read/writes in cisstLog.txt");
 
     options.AddOptionOneValue("n", "ros-namespace",
                               "ROS namespace to prefix all topics, must have start and end \"/\" (default /ndi/)",
@@ -82,6 +78,16 @@ int main(int argc, char * argv[])
     std::string arguments;
     options.PrintParsedArguments(arguments);
     std::cout << "Options provided:" << std::endl << arguments << std::endl;
+
+    // log configuration
+    if (options.IsSet("log-serial")) {
+        std::cout << "Adding log for all serial port read/writes" << std::endl;
+        cmnLogger::SetMask(CMN_LOG_ALLOW_ALL);
+        cmnLogger::SetMaskFunction(CMN_LOG_ALLOW_ALL);
+        cmnLogger::SetMaskDefaultLog(CMN_LOG_ALLOW_ALL);
+        cmnLogger::SetMaskClassMatching("mtsNDISerial", CMN_LOG_ALLOW_ALL);
+        cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
+    }
 
     // create a Qt user interface
     QApplication application(argc, argv);
@@ -140,7 +146,7 @@ int main(int argc, char * argv[])
     trackerROS->AddROSTopics(rosBridge.GetName(), tracker->GetName(), rosNamespace);
     componentManager->Connect(trackerROS->GetName(), "Controller",
                               tracker->GetName(), "Controller");
-    
+
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);
     componentManager->StartAllAndWait(5.0 * cmn_s);
