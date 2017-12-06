@@ -64,6 +64,7 @@ void mtsNDISerial::Init(void)
 
     StateTable.AddData(mIsTracking, "IsTracking");
     StateTable.AddData(mTrackStrayMarkers, "TrackStrayMarkers");
+    StateTable.AddData(mMarkerPositions, "MarkerPositions");
     StateTable.AddData(mStrayMarkers, "StrayMarkers");
 
     mControllerInterface = AddInterfaceProvided("Controller");
@@ -75,13 +76,13 @@ void mtsNDISerial::Init(void)
         mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesInitialize, this, "PortHandlesInitialize");
         mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesQuery, this, "PortHandlesQuery");
         mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesEnable, this, "PortHandlesEnable");
-        mControllerInterface->AddCommandVoid(&mtsNDISerial::ReportStrayMarkers, this, "ReportStrayMarkers");
         mControllerInterface->AddCommandWrite(&mtsNDISerial::ToggleTracking, this, "ToggleTracking");
         mControllerInterface->AddCommandReadState(*mConfigurationStateTable, this->Name, "Name");
         mControllerInterface->AddCommandReadState(*mConfigurationStateTable, mSerialPortName, "SerialPort");
         mControllerInterface->AddCommandReadState(*mConfigurationStateTable, mToolNames, "ToolNames");
         mControllerInterface->AddCommandReadState(StateTable, mIsTracking, "IsTracking");
         mControllerInterface->AddCommandReadState(StateTable, mTrackStrayMarkers, "TrackStrayMarkers");
+        mControllerInterface->AddCommandReadState(StateTable, mMarkerPositions, "MarkerPositions");
         mControllerInterface->AddCommandReadState(StateTable, mStrayMarkers, "StrayMarkers");
         mControllerInterface->AddCommandReadState(StateTable, StateTable.PeriodStats,
                                                   "GetPeriodStatistics");
@@ -1187,97 +1188,25 @@ void mtsNDISerial::Track(void)
         parsePointer += outOfVolumeReplySize;
 
         // read marker positions
-        std::vector<vct3> markerPositions(numMarkers);
+        mMarkerPositions.resize(numMarkers);
         std::vector<bool> markerVisibilities(numMarkers);
         mStrayMarkers.Zeros();
         for (unsigned int i = 0; i < numMarkers; i++) {
             sscanf(parsePointer, "%7lf%7lf%7lf",
-                   &(markerPositions[i].X()), &(markerPositions[i].Y()), &(markerPositions[i].Z()));
+                   &(mMarkerPositions[i].X()), &(mMarkerPositions[i].Y()), &(mMarkerPositions[i].Z()));
             parsePointer += (3 * 7);
-            markerPositions[i].Divide(100.0);  // handle the implied decimal point
+            mMarkerPositions[i].Divide(100.0);  // handle the implied decimal point
+            mMarkerPositions[i].Multiply(cmn_mm); // convert to whatever cisst is using internally
             markerVisibilities[i] = outOfVolumeReply[i + numGarbageBits];  // handle garbage bits in reply
 
             mStrayMarkers[i][0] = 1.0;  // if a marker is encountered
             mStrayMarkers[i][1] = markerVisibilities[i];  // if marker is NOT out of volume
-            mStrayMarkers[i][2] = markerPositions[i].X();
-            mStrayMarkers[i][3] = markerPositions[i].Y();
-            mStrayMarkers[i][4] = markerPositions[i].Z();
-#if 0
-            std::cerr << "ReportStrayMarkers: " << i + 1
-                      << "th marker visibility: " << markerVisibilities[i]
-                      << ", position: " << markerPositions[i] << std::endl;
-#endif
+            mStrayMarkers[i][2] = mMarkerPositions[i].X();
+            mStrayMarkers[i][3] = mMarkerPositions[i].Y();
+            mStrayMarkers[i][4] = mMarkerPositions[i].Z();
         }
     }
     parsePointer += 4;  // skip System Status
-}
-
-
-void mtsNDISerial::ReportStrayMarkers(void)
-{
-    char * parsePointer;
-    unsigned int numPortHandles = 0;
-    unsigned int numMarkers = 0;
-
-    // save tracking status
-    bool wasTracking = mIsTracking;
-    ToggleTracking(true);
-
-    CommandSend("TX 1000");
-    ResponseRead();
-    parsePointer = mSerialBuffer;
-
-    // skip handle number for all port handles
-    sscanf(parsePointer, "%02X", &numPortHandles);
-    parsePointer += 2;
-    for (unsigned int i = 0; i < numPortHandles; i++) {
-        parsePointer += 2;  // skip handle number
-        parsePointer += 1;  // skip line feed (LF)
-    }
-
-    // read number of stray markers
-    sscanf(parsePointer, "%02X", &numMarkers);
-    parsePointer += 2;
-    CMN_LOG_CLASS_RUN_DEBUG << "ReportStrayMarkers: " << numMarkers << " stray markers detected" << std::endl;
-
-    // read "out of volume" reply (see, API documentation for "Reply Option 1000" if this section seems convoluted)
-    unsigned int outOfVolumeReplySize = static_cast<unsigned int>(ceil(numMarkers / 4.0));
-    std::vector<bool> outOfVolumeReply(4 * outOfVolumeReplySize);
-    unsigned int numGarbageBits = (4 * outOfVolumeReplySize) - numMarkers;
-    for (unsigned int i = 0; i < outOfVolumeReplySize; i++) {
-        std::bitset<4> outOfVolumeReplyByte(parsePointer[i]);
-        outOfVolumeReplyByte.flip();
-        for (unsigned int j = 0; j < 4; j++) {
-            outOfVolumeReply[4*i + j] = outOfVolumeReplyByte[3-j];  // 0 if out of volume
-        }
-    }
-    parsePointer += outOfVolumeReplySize;
-
-    // read marker positions
-    std::vector<vct3> markerPositions(numMarkers);
-    std::vector<bool> markerVisibilities(numMarkers);
-    mStrayMarkers.Zeros();
-    for (unsigned int i = 0; i < numMarkers; i++) {
-        sscanf(parsePointer, "%7lf%7lf%7lf",
-               &(markerPositions[i].X()), &(markerPositions[i].Y()), &(markerPositions[i].Z()));
-        parsePointer += (3 * 7);
-        markerPositions[i].Divide(100.0);  // handle the implied decimal point
-        markerVisibilities[i] = outOfVolumeReply[i + numGarbageBits];  // handle garbage bits in reply
-
-        mStrayMarkers[i][0] = 1.0;  // if a marker is encountered
-        mStrayMarkers[i][1] = markerVisibilities[i];  // if marker is NOT out of volume
-        mStrayMarkers[i][2] = markerPositions[i].X();
-        mStrayMarkers[i][3] = markerPositions[i].Y();
-        mStrayMarkers[i][4] = markerPositions[i].Z();
-
-        CMN_LOG_CLASS_RUN_DEBUG << "ReportStrayMarkers: " << i + 1
-                                << "th marker visibility: " << markerVisibilities[i]
-                                << ", position: " << markerPositions[i] << std::endl;
-    }
-    parsePointer += 4;  // skip System Status
-
-    // restore tracking status
-    ToggleTracking(wasTracking);
 }
 
 

@@ -87,6 +87,11 @@ void mtsNDISerialROS::AddROSTopics(const std::string & rosBridgeName,
     mROSBridge->AddPublisherFromEventWrite<std::string, std_msgs::String>
         ("Controller", "Connected", mROSNamespace + "/connected");
 
+    // add ROS bridge for stray markers
+    mROSBridge->AddPublisherFromCommandRead<std::vector<vct3>, sensor_msgs::PointCloud>
+        ("Controller", "MarkerPositions",
+         mROSNamespace + "/fiducials");
+
     manager->Connect(mROSBridgeName, "Controller",
                      mTrackerName, "Controller");
 }

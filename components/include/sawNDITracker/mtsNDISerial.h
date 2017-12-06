@@ -19,12 +19,10 @@ http://www.cisst.org/cisst/license.txt.
 /*!
   \file
   \brief SAW component for NDI surgical trackers with serial (RS-232) interface.
-  \ingroup sawComponents
 
   \warning Missing support for 14400bps, 921600bps and 1228739bps baud rates in osaSerialPort.
 
   \todo Consider deriving from mtsTaskContinuous using an "adaptive" sleep.
-  \todo Add event IsConnected + command to dis-connect   Qt UI should disable some widgets if not connected
   \todo Verify the need for existing sleep times.
   \todo Enable individual tools on-the-fly (dynamically add their interfaces and Qt Widget).
   \todo Move CalibratePivot to cisstNumerical?
@@ -194,7 +192,6 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     void ToggleTracking(const bool & track);
     void ToggleStrayMarkers(const bool & stray);
     void Track(void);
-    void ReportStrayMarkers(void);
 
     struct {
         mtsFunctionWrite Connected;
@@ -220,6 +217,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     bool mIsTracking;
     bool mTrackStrayMarkers;
     mtsMatrix<double> mStrayMarkers;
+    std::vector<vct3> mMarkerPositions;        
 
     double mReadTimeout;
     osaStopwatch mResponseTimer;
