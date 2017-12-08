@@ -47,6 +47,7 @@ int main(int argc, char * argv[])
     std::string configFile;
     std::string rosNamespace = "/ndi";
     double rosPeriod = 20.0 * cmn_ms;
+    double tfPeriod = 20.0 * cmn_ms;
 
     options.AddOptionOneValue("j", "json-config",
                               "json configuration file",
@@ -64,7 +65,11 @@ int main(int argc, char * argv[])
                               cmnCommandLineOptions::OPTIONAL_OPTION, &rosNamespace);
 
     options.AddOptionOneValue("p", "ros-period",
-                              "period in seconds to read all arms/teleop components and publish (default 0.02, 20 ms, 200Hz).  There is no point to have a period higher than the tracker's period",
+                              "period in seconds to read all components and publish (default 0.02, 20 ms, 200Hz).  There is no point to have a period higher than the tracker's period",
+                              cmnCommandLineOptions::OPTIONAL_OPTION, &rosPeriod);
+
+    options.AddOptionOneValue("t", "tf-ros-period",
+                              "period in seconds to read all components and broadcast tf2 (default 0.02, 20 ms, 200Hz).  There is no point to have a period higher than the tracker's period",
                               cmnCommandLineOptions::OPTIONAL_OPTION, &rosPeriod);
 
 
@@ -141,9 +146,13 @@ int main(int argc, char * argv[])
     mtsROSBridge rosBridge(bridgeName, rosPeriod, true);
     componentManager->AddComponent(&rosBridge);
 
+    mtsROSBridge tfBridge(bridgeName + "_tf2", tfPeriod, true);
+    componentManager->AddComponent(&tfBridge);
+
     mtsNDISerialROS * trackerROS = new mtsNDISerialROS("NDI ROS");
     componentManager->AddComponent(trackerROS);
-    trackerROS->AddROSTopics(rosBridge.GetName(), tracker->GetName(), rosNamespace);
+    trackerROS->AddROSTopics(rosBridge.GetName(), tfBridge.GetName(),
+                             tracker->GetName(), rosNamespace);
     componentManager->Connect(trackerROS->GetName(), "Controller",
                               tracker->GetName(), "Controller");
 

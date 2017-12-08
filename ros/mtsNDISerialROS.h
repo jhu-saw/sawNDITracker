@@ -40,6 +40,7 @@ class mtsNDISerialROS: public mtsTaskFromSignal
     void Cleanup(void);
 
     void AddROSTopics(const std::string & rosBridgeName,
+                      const std::string & tfBridgeName,
                       const std::string & trackerName,
                       const std::string & rosNamespace);
  private:
@@ -50,9 +51,11 @@ class mtsNDISerialROS: public mtsTaskFromSignal
     } Tracker;
 
     std::string mROSBridgeName;
+    std::string mTFBridgeName;
     std::string mTrackerName;
     std::string mROSNamespace;
     mtsROSBridge * mROSBridge;
+    mtsROSBridge * mTFBridge;
 
     void ConnectedEventHandler(const std::string & connected);
     void UpdatedToolsEventHandler(void);

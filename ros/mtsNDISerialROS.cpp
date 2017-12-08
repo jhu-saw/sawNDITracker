@@ -44,6 +44,7 @@ mtsNDISerialROS::mtsNDISerialROS(const mtsTaskContinuousConstructorArg & argumen
 void mtsNDISerialROS::Init(void)
 {
     mROSBridge = 0;
+    mTFBridge = 0;
 
     // Setup CISST Interface
     mtsInterfaceRequired * interfaceRequired = AddInterfaceRequired("Controller");
@@ -57,14 +58,18 @@ void mtsNDISerialROS::Init(void)
 }
 
 void mtsNDISerialROS::AddROSTopics(const std::string & rosBridgeName,
+                                   const std::string & tfBridgeName,
                                    const std::string & trackerName,
                                    const std::string & rosNamespace)
 {
     mROSBridgeName = rosBridgeName;
+    mTFBridgeName = tfBridgeName;
     mTrackerName = trackerName;
     mROSNamespace = rosNamespace;
 
     mtsComponentManager * manager = mtsComponentManager::GetInstance();
+
+    // get bridge for topics
     mtsComponent * component = manager->GetComponent(mROSBridgeName);
     if (!component) {
         CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to find any component with name \""
@@ -76,6 +81,23 @@ void mtsNDISerialROS::AddROSTopics(const std::string & rosBridgeName,
     if (!component) {
         CMN_LOG_CLASS_INIT_ERROR << "Configure: component with name \""
                                  << mROSBridgeName
+                                 << "\" doesn't seem to be of type \"mtsROSBridge\""
+                                 << std::endl;
+        return;
+    }
+
+    // get bridge for tf2
+    component = manager->GetComponent(mTFBridgeName);
+    if (!component) {
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to find any component with name \""
+                                 << mTFBridgeName << "\"" << std::endl;
+        return;
+    }
+
+    mTFBridge = dynamic_cast<mtsROSBridge *>(component);
+    if (!component) {
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: component with name \""
+                                 << mTFBridgeName
                                  << "\" doesn't seem to be of type \"mtsROSBridge\""
                                  << std::endl;
         return;
@@ -135,9 +157,14 @@ void mtsNDISerialROS::UpdatedToolsEventHandler(void)
         std::replace(rosName.begin(), rosName.end(), '-', '_');
         // check if there's already a required interface with that name
         if (!(mROSBridge->GetInterfaceRequired(name))) {
+            // publishers
             mROSBridge->AddPublisherFromCommandRead<prmPositionCartesianGet, geometry_msgs::PoseStamped>
                 (name, "GetPositionCartesian", mROSNamespace + "/" + rosName + "/position_cartesian_current");
             manager->Connect(mROSBridgeName, name,
+                             mTrackerName, name);
+            // tf2
+            mTFBridge->Addtf2BroadcasterFromCommandRead(name, "GetPositionCartesian");
+            manager->Connect(mTFBridgeName, name,
                              mTrackerName, name);
         }
     }
