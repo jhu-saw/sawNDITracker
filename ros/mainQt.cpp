@@ -65,12 +65,12 @@ int main(int argc, char * argv[])
                               cmnCommandLineOptions::OPTIONAL_OPTION, &rosNamespace);
 
     options.AddOptionOneValue("p", "ros-period",
-                              "period in seconds to read all components and publish (default 0.02, 20 ms, 200Hz).  There is no point to have a period higher than the tracker's period",
+                              "period in seconds to read all components and publish (default 0.02, 20 ms, 50Hz).  There is no point to have a period higher than the tracker's period",
                               cmnCommandLineOptions::OPTIONAL_OPTION, &rosPeriod);
 
-    options.AddOptionOneValue("t", "tf-ros-period",
-                              "period in seconds to read all components and broadcast tf2 (default 0.02, 20 ms, 200Hz).  There is no point to have a period higher than the tracker's period",
-                              cmnCommandLineOptions::OPTIONAL_OPTION, &rosPeriod);
+    options.AddOptionOneValue("P", "tf-ros-period",
+                              "period in seconds to read all components and broadcast tf2 (default 0.02, 20 ms, 50Hz).  There is no point to have a period higher than the tracker's period",
+                              cmnCommandLineOptions::OPTIONAL_OPTION, &tfPeriod);
 
 
     // check that all required options have been provided
