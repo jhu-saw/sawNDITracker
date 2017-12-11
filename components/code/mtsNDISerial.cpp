@@ -1218,6 +1218,7 @@ mtsNDISerial::Tool::Tool(void):
     MainType[2] = '\0';
     ManufacturerID[12] = '\0';
     ToolRevision[3] = '\0';
+    SerialNumber.resize(9); // SerialNumber is an std::string, not a static array
     SerialNumber[8] = '\0';
     PartNumber[20] = '\0';
 }
