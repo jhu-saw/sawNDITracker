@@ -1045,6 +1045,7 @@ void mtsNDISerial::ToggleTracking(const bool & track)
 
     // if track requested
     if (track) {
+        // start tracking
         CommandSend("TSTART 80");
         if (ResponseRead("OKAY")) {
             mIsTracking = true;
@@ -1054,6 +1055,16 @@ void mtsNDISerial::ToggleTracking(const bool & track)
             mControllerInterface->SendError(this->GetName() + ": failed to turn tracking on");
         }
     } else {
+        // update tool positions based on reference frame (if any)
+        const ToolsType::iterator end = mTools.end();
+        ToolsType::iterator toolIterator;
+        for (toolIterator = mTools.begin();
+             toolIterator != end;
+             ++toolIterator) {
+            toolIterator->second->PositionLocal.SetValid(false);
+            toolIterator->second->Position.SetValid(false);
+        }
+        // stop tracking
         CommandSend("TSTOP ");
         if (ResponseRead("OKAY")) {
             mIsTracking = false;
