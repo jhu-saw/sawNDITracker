@@ -113,11 +113,7 @@ void mtsNDISerialControllerQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(event))
          ++toolIter) {
         Tool * tool = toolIter->second;
         tool->GetPositionCartesian(tool->Position);
-        if (tool->Position.Valid()) {
-            tool->Widget->SetValue(tool->Position.Position());
-        } else {
-            tool->Widget->SetValue(vctFrm3::Identity());
-        }
+        tool->Widget->SetValue(tool->Position);
     }
 }
 
@@ -291,14 +287,12 @@ void mtsNDISerialControllerQtWidget::SlotUpdatedToolsEvent(void)
             int position = static_cast<int>(Tools.size());
             int row = position / NB_COLS;
             int col = position % NB_COLS;
-            tool->Widget = new vctQtWidgetFrameDoubleRead(vctQtWidgetRotationDoubleRead::OPENGL_WIDGET);
+            tool->Widget = new prmPositionCartesianGetQtWidget();
             // busy wait until this is connected to retrieve moving/reference frames
             while (!tool->GetPositionCartesian(tool->Position)) {
-                osaSleep(100.0 * cmn_ms); 
+                osaSleep(100.0 * cmn_ms);
             }
-            std::string label = tool->Position.MovingFrame() + " wrt " + tool->Position.ReferenceFrame();
-            QGTools->addWidget(new QLabel(label.c_str()), 2 * row, col);
-            QGTools->addWidget(tool->Widget, 2 * row + 1, col);
+            QGTools->addWidget(tool->Widget, row, col);
             Tools.AddItem(name, tool);
         }
     }

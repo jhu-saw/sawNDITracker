@@ -20,9 +20,9 @@ http://www.cisst.org/cisst/license.txt.
 #define _mtsNDISerialControllerQtWidget_h
 
 #include <cisstMultiTask/mtsComponent.h>
-#include <cisstVector/vctQtWidgetFrame.h>
 
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
+#include <cisstParameterTypes/prmPositionCartesianGetQtWidget.h>
 
 #include <cisstMultiTask/mtsIntervalStatisticsQtWidget.h>
 #include <cisstMultiTask/mtsMessageQtWidget.h>
@@ -93,7 +93,7 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
     void SetControlWidgetsEnabled(const bool enabled);
 
     struct Tool {
-        vctQtWidgetFrameDoubleRead * Widget;
+        prmPositionCartesianGetQtWidget * Widget;
         mtsInterfaceRequired * Interface;
         mtsFunctionRead GetPositionCartesian;
         prmPositionCartesianGet Position;
