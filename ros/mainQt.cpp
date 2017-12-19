@@ -25,6 +25,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstCommon/cmnPath.h>
 #include <cisstCommon/cmnUnits.h>
 #include <cisstCommon/cmnCommandLineOptions.h>
+#include <cisstCommon/cmnQt.h>
 
 #include <cisstMultiTask/mtsTaskManager.h>
 
@@ -96,6 +97,7 @@ int main(int argc, char * argv[])
 
     // create a Qt user interface
     QApplication application(argc, argv);
+    cmnQt::QApplicationExitsOnCtrlC();
 
     // create the components
     mtsNDISerial * tracker = new mtsNDISerial("NDI", 50.0 * cmn_ms);
@@ -143,10 +145,10 @@ int main(int argc, char * argv[])
     std::replace(bridgeName.begin(), bridgeName.end(), '/', '_');
     std::replace(bridgeName.begin(), bridgeName.end(), '-', '_');
     std::replace(bridgeName.begin(), bridgeName.end(), '.', '_');
-    mtsROSBridge rosBridge(bridgeName, rosPeriod, true);
+    mtsROSBridge rosBridge(bridgeName, rosPeriod, true, false); // spin, don't catch sigint
     componentManager->AddComponent(&rosBridge);
 
-    mtsROSBridge tfBridge(bridgeName + "_tf2", tfPeriod, true);
+    mtsROSBridge tfBridge(bridgeName + "_tf2", tfPeriod, true, false); // spin, don't catch sigint
     componentManager->AddComponent(&tfBridge);
 
     mtsNDISerialROS * trackerROS = new mtsNDISerialROS("NDI ROS");
