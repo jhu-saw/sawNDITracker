@@ -129,6 +129,13 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     void Connect(const std::string & serialPortName);
     void Disconnect(void);
 
+    /*! Initialization sequence to initialize, query and enable all
+      tool handles.  Calls Initialize, PortHandlesInitialize,
+      PortHandlesPassiveTools, PortHandlesQuery, PortHandlesEnable. */
+    void InitializeAll(void);
+
+    /*! Send INIT to device and waits for response OKAY */
+    void Initialize(void);
     void PortHandlesInitialize(void);
     void PortHandlesQuery(void);
     void PortHandlesEnable(void);
@@ -217,7 +224,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     bool mIsTracking;
     bool mTrackStrayMarkers;
     mtsMatrix<double> mStrayMarkers;
-    std::vector<vct3> mMarkerPositions;        
+    std::vector<vct3> mMarkerPositions;
 
     double mReadTimeout;
     osaStopwatch mResponseTimer;

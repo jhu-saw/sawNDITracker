@@ -68,6 +68,7 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
         mtsFunctionRead  GetPeriodStatistics;
         mtsFunctionWrite Connect;
         mtsFunctionVoid  Disconnect;
+        mtsFunctionVoid  InitializeAll;
         mtsFunctionRead  Name;
         mtsFunctionRead  ToolNames;
         mtsFunctionWrite Track;
@@ -77,6 +78,7 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
  private:
     // Control
     QCheckBox * QCBConnect;
+    QPushButton * QPBInitializeAll;
     QLabel * QLPortName;
     QCheckBox * QCBTrack;
     QPushButton * QPBBeepButton;
@@ -104,6 +106,7 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
 
  private slots:
     void SlotConnect(bool);
+    void SlotInitializeAll(void);
     void SlotTrack(bool);
     void SlotBeep(void);
 

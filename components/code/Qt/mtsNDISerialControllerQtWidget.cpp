@@ -47,6 +47,7 @@ mtsNDISerialControllerQtWidget::mtsNDISerialControllerQtWidget(const std::string
         interfaceRequired->AddFunction("GetPeriodStatistics", Tracker.GetPeriodStatistics);
         interfaceRequired->AddFunction("Connect", Tracker.Connect);
         interfaceRequired->AddFunction("Disconnect", Tracker.Disconnect);
+        interfaceRequired->AddFunction("InitializeAll", Tracker.InitializeAll);
         // ADV        interfaceRequired->AddFunction("Name", Tracker.Name);
         interfaceRequired->AddFunction("ToolNames", Tracker.ToolNames);
         interfaceRequired->AddFunction("ToggleTracking", Tracker.Track);
@@ -157,6 +158,13 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
             this, SLOT(SlotTrack(bool)));
     row++;
 
+    // (re)initialize all
+    QPBInitializeAll = new QPushButton("(Re)initialize");
+    gridLayout->addWidget(QPBInitializeAll, row, 0);
+    connect(QPBInitializeAll, SIGNAL(clicked()),
+            this, SLOT(SlotInitializeAll()));
+    row++;
+
     // beep
     QPBBeepButton = new QPushButton("Beep");
     gridLayout->addWidget(QPBBeepButton, row, 0);
@@ -206,6 +214,7 @@ void mtsNDISerialControllerQtWidget::SetControlWidgetsEnabled(const bool enabled
     // set the connected flag
     QCBConnect->setChecked(enabled);
     // enable/disable other buttons
+    QPBInitializeAll->setEnabled(enabled);
     QCBTrack->setEnabled(enabled);
     QPBBeepButton->setEnabled(enabled);
     QSBBeepCount->setEnabled(enabled);
@@ -220,6 +229,11 @@ void mtsNDISerialControllerQtWidget::SlotConnect(bool connect)
         QCBTrack->setChecked(false);
         Tracker.Disconnect();
     }
+}
+
+void mtsNDISerialControllerQtWidget::SlotInitializeAll(void)
+{
+    Tracker.InitializeAll();
 }
 
 void mtsNDISerialControllerQtWidget::SlotTrack(bool track)
@@ -253,7 +267,9 @@ void mtsNDISerialControllerQtWidget::SlotConnectedEvent(void)
 
 void mtsNDISerialControllerQtWidget::TrackingEventHandler(const bool & tracking)
 {
+    const bool oldState = QCBTrack->blockSignals(true);
     QCBTrack->setChecked(tracking);
+    QCBTrack->blockSignals(oldState);
 }
 
 void mtsNDISerialControllerQtWidget::UpdatedToolsEventHandler(void)

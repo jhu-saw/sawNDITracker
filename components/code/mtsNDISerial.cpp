@@ -72,6 +72,7 @@ void mtsNDISerial::Init(void)
         mControllerInterface->AddMessageEvents();
         mControllerInterface->AddCommandWrite(&mtsNDISerial::Connect, this, "Connect");
         mControllerInterface->AddCommandVoid(&mtsNDISerial::Disconnect, this, "Disconnect");
+        mControllerInterface->AddCommandVoid(&mtsNDISerial::InitializeAll, this, "InitializeAll");
         mControllerInterface->AddCommandWrite(&mtsNDISerial::Beep, this, "Beep");
         mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesInitialize, this, "PortHandlesInitialize");
         mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesQuery, this, "PortHandlesQuery");
@@ -293,10 +294,7 @@ void mtsNDISerial::Connect(const std::string & serialPortName)
     mControllerInterface->SendStatus(this->GetName() + ": device found on port: "
                                      + mSerialPort.GetPortName());
 
-    // increase the timeout during initialization
-    const double previousTimeout = mReadTimeout;
-    mReadTimeout = 5.0 * cmn_s;
-
+    // set serial port settings
     SetSerialPortSettings(osaSerialPort::BaudRate115200,
                           osaSerialPort::CharacterSize8,
                           osaSerialPort::ParityCheckingNone,
@@ -304,15 +302,7 @@ void mtsNDISerial::Connect(const std::string & serialPortName)
                           osaSerialPort::FlowControlNone);
 
     // initialize NDI controller
-    CommandSend("INIT ");
-    if (ResponseRead("OKAY")) {
-        mControllerInterface->SendStatus(this->GetName() + ": device initialized");
-    } else {
-        mControllerInterface->SendError(this->GetName() + ": device failed to initialize");
-        mSerialPort.Close();
-        mReadTimeout = previousTimeout;
-        return;
-    }
+    Initialize();
 
     // now we're connected
     mConfigurationStateTable->Start();
@@ -336,21 +326,46 @@ void mtsNDISerial::Connect(const std::string & serialPortName)
     if (ResponseRead("024")) {
         mControllerInterface->SendStatus(this->GetName() + ": device firmware is 024 (supported)");
     } else {
-        mControllerInterface->SendError(this->GetName() + ": device firmware is not what we're expecting, got: "
-                                        + mSerialBuffer);
-        // mReadTimeout = previousTimeout;
-        // return;
+        mControllerInterface->SendWarning(this->GetName() + ": device firmware is not what we're expecting, got: "
+                                          + mSerialBuffer + ".  It might still work");
     }
 
+    InitializeAll();
+}
+
+void mtsNDISerial::Initialize(void)
+{
+    // during init we have to wait a bit before we can get an answer
+    const double previousTimeout = mReadTimeout;
+    mReadTimeout = 5.0 * cmn_s;
+
+    // initialize NDI controller
+    CommandSend("INIT ");
+    if (ResponseRead("OKAY")) {
+        mControllerInterface->SendStatus(this->GetName() + ": device initialized");
+    } else {
+        mControllerInterface->SendError(this->GetName() + ": device failed to initialize");
+        mSerialPort.Close();
+        mReadTimeout = previousTimeout;
+        return;
+    }
     mReadTimeout = previousTimeout;
+}
 
+void mtsNDISerial::InitializeAll(void)
+{
+    // save tracking mode
+    bool wasTracking = mIsTracking;
+    ToggleTracking(false);
+
+    Initialize();
     PortHandlesInitialize();
-
     PortHandlesPassiveTools();
-
     PortHandlesQuery();
-
     PortHandlesEnable();
+
+    // restore tracking mode
+    ToggleTracking(wasTracking);
 }
 
 void mtsNDISerial::Disconnect(void)
@@ -549,7 +564,7 @@ bool mtsNDISerial::ResetSerialPort(void)
     const double previousReadTimeout = mReadTimeout;
     mReadTimeout = 5.0 * cmn_s;
     if (!ResponseRead("RESET")) {
-        CMN_LOG_CLASS_INIT_ERROR << "ResetSerialPort: failed to reset" << std::endl;
+        mControllerInterface->SendError(this->GetName() + ": ResetSerialPort: failed to reset");
         mReadTimeout = previousReadTimeout;
         return false;
     }
@@ -733,6 +748,9 @@ void mtsNDISerial::LoadToolDefinitionFile(const char * portHandle,
         CommandSend();
         ResponseRead("OKAY");
     }
+
+    mControllerInterface->SendStatus(this->GetName()
+                                     + ": loaded: " + filePath);
 }
 
 
@@ -744,7 +762,8 @@ mtsNDISerial::Tool * mtsNDISerial::CheckTool(const std::string & serialNumber)
          toolIterator != end;
          ++toolIterator) {
         if (toolIterator->second->SerialNumber == serialNumber) {
-            CMN_LOG_CLASS_INIT_DEBUG << "CheckTool: found existing tool for serial number: " << serialNumber << std::endl;
+            CMN_LOG_CLASS_INIT_DEBUG << "CheckTool: found existing tool for serial number: "
+                                     << serialNumber << std::endl;
             return toolIterator->second;
         }
     }
@@ -772,11 +791,13 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
     tool->ReferenceFrame = reference;
 
     if (!mTools.AddItem(tool->Name, tool, CMN_LOG_LEVEL_INIT_ERROR)) {
-        CMN_LOG_CLASS_INIT_ERROR << "AddTool: no tool created, duplicate name exists: " << name << std::endl;
+        CMN_LOG_CLASS_INIT_ERROR << "AddTool: no tool created, duplicate name exists: "
+                                 << name << std::endl;
         delete tool;
         return 0;
     }
-    CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: created tool \"" << name << "\" with serial number: " << serialNumber << std::endl;
+    CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: created tool \"" << name
+                               << "\" with serial number: " << serialNumber << std::endl;
 
     // create an interface for tool
     tool->Interface = AddInterfaceProvided(name);
@@ -854,8 +875,14 @@ void mtsNDISerial::PortHandlesInitialize(void)
         CommandAppend("PHF ");
         CommandAppend(portHandles[i].Pointer());
         CommandSend();
-        ResponseRead("OKAY");
-        CMN_LOG_CLASS_RUN_DEBUG << "PortHandlesInitialize: freed port handle: " << portHandles[i].Pointer() << std::endl;
+        if (ResponseRead("OKAY")) {
+            CMN_LOG_CLASS_RUN_DEBUG << "PortHandlesInitialize: freed port handle: "
+                                    << portHandles[i].Pointer() << std::endl;
+        } else {
+            mControllerInterface->SendError(this->GetName()
+                                            + ": PortHandlesInitialize: PHF command failed");
+            return;
+        }
     }
 
     // are there port handles to be initialized?
@@ -875,9 +902,17 @@ void mtsNDISerial::PortHandlesInitialize(void)
         CommandAppend("PINIT ");
         CommandAppend(portHandles[i].Pointer());
         CommandSend();
-        ResponseRead("OKAY");
-        CMN_LOG_CLASS_RUN_DEBUG << "PortHandlesInitialize: initialized port handle: " << portHandles[i].Pointer() << std::endl;
+        if (ResponseRead("OKAY")) {
+            CMN_LOG_CLASS_RUN_DEBUG << "PortHandlesInitialize: initialized port handle: "
+                                    << portHandles[i].Pointer() << std::endl;
+        } else {
+            mControllerInterface->SendError(this->GetName()
+                                            + ": PortHandlesInitialize: PINIT command failed");
+            return;
+        }
+
     }
+    mControllerInterface->SendStatus(this->GetName() + ": tool handles initialized");
 }
 
 
@@ -985,6 +1020,8 @@ void mtsNDISerial::PortHandlesEnable(void)
         tool = mPortToTool.GetItem(toolKey);
         if (!tool) {
             CMN_LOG_CLASS_RUN_ERROR << "PortHandlesEnable: no tool for port handle: " << toolKey << std::endl;
+            mControllerInterface->SendError(this->GetName()
+                                            + ": PortHandlesEnable failed to find tool for one port handle");
             return;
         }
 
@@ -1003,9 +1040,17 @@ void mtsNDISerial::PortHandlesEnable(void)
             return;
         }
         CommandSend();
-        ResponseRead("OKAY");
-        CMN_LOG_CLASS_RUN_DEBUG << "PortHandlesEnable: enabled port handle: " << portHandles[i].Pointer() << std::endl;
+        if (ResponseRead("OKAY")) {
+            CMN_LOG_CLASS_RUN_DEBUG << "PortHandlesEnable: enabled port handle: "
+                                    << portHandles[i].Pointer() << std::endl;
+        } else {
+            mControllerInterface->SendError(this->GetName()
+                                            + ": PortHandlesEnable failed for tool "
+                                            + tool->Name);
+            return;
+        }
     }
+    mControllerInterface->SendStatus(this->GetName() + ": active tool handles enabled ");
 }
 
 
@@ -1029,10 +1074,13 @@ void mtsNDISerial::PortHandlesPassiveTools(void)
                 LoadToolDefinitionFile(portHandle, toolIterator->second->Definition);
                 mPortToTool.AddItem(portHandle, toolIterator->second, CMN_LOG_LEVEL_INIT_ERROR);
             } else {
-                CMN_LOG_CLASS_INIT_ERROR << "PortHandlesPassiveTools: failed to receive port handle for passive tool" << std::endl;
+                mControllerInterface->SendError(this->GetName() +
+                                                ":PortHandlesPassiveTools: failed to receive port handle for passive tool");
+                return;
             }
         }
     }
+    mControllerInterface->SendStatus(this->GetName() + ": passive tool handles enabled ");
 }
 
 
@@ -1112,6 +1160,8 @@ void mtsNDISerial::Track(void)
         tool = mPortToTool.GetItem(toolKey);
         if (!tool) {
             CMN_LOG_CLASS_RUN_ERROR << "Track: no tool for port handle: " << toolKey << std::endl;
+            mControllerInterface->SendError(this->GetName() + ": parsing TX result failed, missing tool for port handle");
+            ToggleTracking(false);
             return;
         }
 
@@ -1119,27 +1169,31 @@ void mtsNDISerial::Track(void)
             CMN_LOG_CLASS_RUN_VERBOSE << "Track: " << tool->Name << " is missing" << std::endl;
             tool->PositionLocal.SetValid(false);
             tool->Position.SetValid(false);
-            parsePointer += 7;
+            parsePointer += 7;  // skip string MISSING
             parsePointer += 8;  // skip Port Status
         } else if (strncmp(parsePointer, "DISABLED", 8) == 0) {
             CMN_LOG_CLASS_RUN_VERBOSE << "Track: " << tool->Name << " is disabled" << std::endl;
             tool->PositionLocal.SetValid(false);
             tool->Position.SetValid(false);
-            parsePointer += 8;
+            parsePointer += 8;  // skip string DISABLED
             parsePointer += 8;  // skip Port Status
         } else if (strncmp(parsePointer, "UNOCCUPIED", 10) == 0) {
             CMN_LOG_CLASS_RUN_VERBOSE << "Track: " << tool->Name << " is unoccupied" << std::endl;
             tool->PositionLocal.SetValid(false);
             tool->Position.SetValid(false);
-            parsePointer += 10;
+            parsePointer += 10; // skip string UNOCCUPIED
             parsePointer += 8;  // skip Port Status
         } else {
             sscanf(parsePointer, "%6lf%6lf%6lf%6lf%7lf%7lf%7lf%6lf%*8X",
                    &(toolOrientation.W()), &(toolOrientation.X()), &(toolOrientation.Y()), &(toolOrientation.Z()),
                    &(toolPosition.X()), &(toolPosition.Y()), &(toolPosition.Z()),
                    &(tool->ErrorRMS));
-            parsePointer += (4 * 6) + (3 * 7) + 6 + 8;
-
+            parsePointer
+                += (4 * 6) // quaternion
+                + (3 * 7)  // translation
+                + 6;       // error RMS
+            std::bitset<32> status(*parsePointer);
+            parsePointer += 8;       // port status
             toolOrientation.Divide(10000.0); // implicit format -x.xxxx
             tooltipPosition.Rotation().FromRaw(toolOrientation);
             toolPosition.Divide(100.0); // convert to mm, implicit format -xxxx.xx
@@ -1154,6 +1208,8 @@ void mtsNDISerial::Track(void)
         CMN_LOG_CLASS_RUN_DEBUG << "Track: frame number: " << tool->FrameNumber << std::endl;
         if (*parsePointer != '\n') {
             CMN_LOG_CLASS_RUN_ERROR << "Track: line feed expected, received: " << *parsePointer << std::endl;
+            mControllerInterface->SendError(this->GetName() + ": parsing TX result failed, expected line feed");
+            ToggleTracking(false);
             return;
         }
         parsePointer += 1;  // skip line feed (LF)
@@ -1192,8 +1248,8 @@ void mtsNDISerial::Track(void)
         for (unsigned int i = 0; i < outOfVolumeReplySize; i++) {
             std::bitset<4> outOfVolumeReplyByte(parsePointer[i]);
             outOfVolumeReplyByte.flip();
-            for (unsigned int j = 0; j < 4; j++) {
-                outOfVolumeReply[4*i + j] = outOfVolumeReplyByte[3-j];  // 0 if out of volume
+            for (size_t j = 0; j < 4; j++) {
+                outOfVolumeReply[4 * i + j] = outOfVolumeReplyByte[3 - j];  // 0 if out of volume
             }
         }
         parsePointer += outOfVolumeReplySize;
@@ -1217,6 +1273,7 @@ void mtsNDISerial::Track(void)
             mStrayMarkers[i][4] = mMarkerPositions[i].Z();
         }
     }
+
     parsePointer += 4;  // skip System Status
 }
 
