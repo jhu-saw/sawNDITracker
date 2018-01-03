@@ -113,7 +113,7 @@ The ROS node has a few more command line options:
  -P <value>, --tf-ros-period <value> : period in seconds to read all components and broadcast tf2 (default 0.02, 20 ms, 50Hz).  There is no point to have a period higher than the tracker's period (optional)
 ```
 
-Once the node is started, the following ROS topics should appear:
+Once the node is started AND connected, the following ROS topics should appear:
 ```sh
 /ndi/Base/position_cartesian_current
 /ndi/Pointer/position_cartesian_current
@@ -121,5 +121,17 @@ Once the node is started, the following ROS topics should appear:
 /ndi/connected
 /ndi/fiducials
 ```
+
+The topic names for the tools are based on the names in the configuration file or the serial numbers if there is no configuration file specified.
+
+You can also visualize the tf2 output using:
+```sh
+rosrun tf2_tools view_frames.py
+evince frames.pdf 
+```
+
+In our example, the `Base` is defined with respect to the `Camera` and the `Pointer` is defined with respect to the `Base`:
+![tf2](doc/frames.png "tf2")
+
 
 
