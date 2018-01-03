@@ -85,11 +85,13 @@ Some examples of configuration files can be found in the `share` directory.  Her
 When starting the example, the GUI will just show the controller view:
 ![GUI controller view](doc/gui-on-start.png "GUI on start, controller view")
 
-The first step is to connect to the device.   If the device is found, the tool widgets will appear:
+The first step is to connect to the device.   If the device is found, the tool widgets will appear.  The number of tools and names used is based on the content of the configuration file.
 ![GUI with tools](doc/gui-after-connect.png "GUI after connection, tools widgets should appear")
 
 Then you can start tracking:
 ![GUI tracking](doc/gui-tracking.png "GUI tracking, when visible the timestamp should turn green")
+
+If you unplug/replug an active tool, you might have to hit the `(Re)initialize` button and then turn tracking back on.
 
 ## Python
 
@@ -101,7 +103,7 @@ cisst-saw/sawNDITracker/examples$ ./mainPython.py --port /dev/ttyUSB0 --json ../
 
 ## ROS
 
-Please read section above for configuration file description.  The ROS node is `ndi_tracker` and can be found in the package `ndi_tracker_ros`:
+Please read the section above for the configuration file description.  The ROS node is `ndi_tracker` and can be found in the package `ndi_tracker_ros`:
 ```sh
 roscd ndi_tracker_ros
 rosrun ndi_tracker_ros ndi_tracker -j ../share/ndi-active-tools.json 
