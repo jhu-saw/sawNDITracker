@@ -7,9 +7,9 @@ It compiles on Windows, Linux and likely MacOS.  It has been tested with:
 
 The `ros` folder contains code for a ROS node that interfaces with the sawNDITracker component
 and publishes the 3D transformations of each tracked tool as well as a point cloud for all stray 
-markers.  It also broadcasts transformations for `tf2`.  To build, make sure you use `catkin build`.
+markers.  It also broadcasts transformations for `tf2`.  To build the ROS node, make sure you use `catkin build`.
 
-If needed, one can also add OpenIGTLink support using sawOpenIGTLink (contact the sawNDITracker developer 
+If needed, one can also add OpenIGTLink support using sawOpenIGTLink (contact the sawNDITracker developers 
 if you need help with this).
 
 # Links
@@ -25,7 +25,7 @@ if you need help with this).
  
 ## Linux permissions
  
-NDI communication is basically a serial port.  When connecting your tracker to your computer, a "device" will be added
+NDI trackers use a serial port to communicate.  When connecting your tracker to your computer, a "device" will be added
 to the `/dev` directory.   Usually something like `/dev/ttyS01`, `/dev/ttyUSB0` or `/dev/ttyACM0`.  
 Check the file permissions on said device, e.g.
 ```sh
@@ -65,22 +65,21 @@ Some examples of configuration files can be found in the `share` directory.  Her
 
     // list of tools to be tracked
     "tools": [
-	    {
-	        // active tool
-	        "name": "Base",
-	        "serial-number": "3288C807"
-	    }
-        ,
-	    {
-	        // passive tool, must be defined after Base since it uses Base as reference frame
-	        "name": "Pointer",
-	        "serial-number": "34801403",
-	        "definition": "8700339.rom", // this is a passive tool, the definition has to be provided
+        {
+            // active tool
+            "name": "Base",
+            "serial-number": "3288C807"
+        }
+	,
+        {
+            // passive tool, must be defined after Base since it uses Base as reference frame
+            "name": "Pointer",
+            "serial-number": "34801403",
+            "definition": "8700339.rom", // this is a passive tool, the definition has to be provided
             "reference" : "Base"
-	    }
+        }
     ]
 }
-
 ```
 
 When starting the example, the GUI will just show the controller view:
@@ -92,11 +91,17 @@ The first step is to connect to the device.   If the device is found, the tool w
 Then you can start tracking:
 ![GUI tracking](doc/gui-tracking.png "GUI tracking, when visible the timestamp should turn green")
 
+## Python
 
+Since `cisstMultiTask` has a nice Python interface it is possible to use the `sawNDITracker` from Python.  Make sure you compiled `cisst` with the CMake option `CISST_HAS_SWIG_PYTHON` and you've sourced `cisstvars.sh` so you can find the `cisstMultiTaskPython` module.
+
+```sh
+cisst-saw/sawNDITracker/examples$ ./mainPython.py --port /dev/ttyUSB0 --json ../share/ndi-active-tools.json
+```
 
 ## ROS
 
-Please read section above for configuration file description.  The ROS node provided `ndi_tracker` is in the package `ndi_tracker_ros`:
+Please read section above for configuration file description.  The ROS node is `ndi_tracker` and can be found in the package `ndi_tracker_ros`:
 ```sh
 roscd ndi_tracker_ros
 rosrun ndi_tracker_ros ndi_tracker -j ../share/ndi-active-tools.json 
