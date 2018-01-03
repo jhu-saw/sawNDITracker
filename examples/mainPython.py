@@ -14,9 +14,6 @@ parser.add_argument('--json', dest='json', required=True, type=argparse.FileType
 
 cmd_line_args = parser.parse_args()
 
-print('- port: ' + cmd_line_args.port)
-print('- json: ' + cmd_line_args.json.name)
-
 from cisstCommonPython import *
 from cisstVectorPython import *
 from cisstOSAbstractionPython import *
@@ -78,7 +75,7 @@ print ('--> connect interfaces for all tools')
 tools = {}
 for toolName in toolNames:
     print('  -- found tool: ' + toolName)
-    tools[toolName] = (proxy.AddInterfaceRequiredAndConnect((name, toolName)))
+    tools[toolName] = (proxy.AddInterfaceRequiredAndConnect((name, toolName), 5))
 
 # enable tracking
 print('--> enabling tracking and beep twice')
