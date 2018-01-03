@@ -13,18 +13,18 @@
 
     // list of tools to be tracked
     "tools": [
-	    {
-	        // passive tool
-	        "name": "Pointer",
-	        "serial-number": "34801403",
-	        "definition": "8700339.rom" // this is a passive tool, the definition has to be provided
-	    }
+        {
+            // passive tool
+            "name": "Pointer",
+            "serial-number": "34801403",
+            "definition": "8700339.rom" // this is a passive tool, the definition has to be provided
+        }
         ,
         {
-	        // passive tool
-	        "name": "Base",
-	        "serial-number": "34801401",
-	        "definition": "8700338.rom" // this is a passive tool, the definition has to be provided
-	    }
+            // passive tool
+            "name": "Base",
+            "serial-number": "34801401",
+            "definition": "8700338.rom" // this is a passive tool, the definition has to be provided
+        }
     ]
 }
