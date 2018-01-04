@@ -1,16 +1,12 @@
 # sawNDITracker
 
-This SAW component contains code for interfacing with many NDI (Northern Digital Inc, https://www.ndigital.com/) trackers. 
-It compiles on Windows, Linux and likely MacOS.  It has been tested with:
+This SAW component contains code for interfacing with many NDI tracking devices (Northern Digital Inc, https://www.ndigital.com/).  It compiles on Windows, Linux and likely MacOS.  It has been tested with:
   * Linux and Windows
   * NDI Polaris (old generation), Spectra and Vicra
 
-The `ros` folder contains code for a ROS node that interfaces with the sawNDITracker component
-and publishes the 3D transformations of each tracked tool as well as a point cloud for all stray 
-markers.  It also broadcasts transformations for `tf2`.  To build the ROS node, make sure you use `catkin build`.
+The `ros` folder contains code for a ROS node that interfaces with the sawNDITracker component and publishes the 3D transformations of each tracked tool as well as a point cloud for all stray markers.  It also broadcasts transformations for `tf2`.  To build the ROS node, make sure you use `catkin build`.
 
-If needed, one can also add OpenIGTLink support using sawOpenIGTLink (contact the sawNDITracker developers 
-if you need help with this).
+If needed, one can also add OpenIGTLink support using sawOpenIGTLink (contact the sawNDITracker developers if you need help with this).
 
 # Links
  * License: http://github.com/jhu-cisst/cisst/blob/master/license.txt
@@ -25,18 +21,14 @@ if you need help with this).
  
 ## Linux permissions
  
-NDI trackers use a serial port to communicate.  When connecting your tracker to your computer, a "device" will be added
-to the `/dev` directory.   Usually something like `/dev/ttyS01`, `/dev/ttyUSB0` or `/dev/ttyACM0`.  
-Check the file permissions on said device, e.g.
+NDI trackers use a serial port to communicate.  When connecting your tracker to your computer, a pseudo device will be added to the `/dev` directory.   Usually something like `/dev/ttyS01`, `/dev/ttyUSB0` or `/dev/ttyACM0`.  Using the command `dmesg` can help identify which device is used.  Check the file permissions on said device, e.g.,
 ```sh
 ls -al /dev/ttyUSB0 
 crw-rw---- 1 root dialout 188, 0 Jan  3 09:32 /dev/ttyUSB0
 ```
-On Ubuntu, the OS sets the ownership of `/dev/ttyUSB0` to `root` and the group to `dialout`.   To grant permissions to 
-read and write to the device, use the command `sudo adduser <user_id> dialout`.   Please note that the user has to 
-logout/login for the new group membership to take effect.
+On Ubuntu, the OS usually sets the ownership of `/dev/ttyUSB0` to `root` and the group to `dialout`.   To grant permissions to read and write to the device, use the command `sudo adduser <user_id> dialout` to add users to the `dialout` group.   Please note that the user has to logout/login for the new group membership to take effect.
  
-## Without ROS
+## Main example
  
 The main example provided is `sawNDITrackerQtExample`.  The command line options are:
 ```sh
@@ -46,16 +38,15 @@ sawNDITrackerQtExample:
 -l, --log-serial : log all serial port read/writes in cisstLog.txt (optional)
 ```
 
-The JSON configuration file is optional.  It can be skipped if all your tools are active (i.e. wired to the tool control
-unit).  For active tools, the default names will be based on the tools serial numbers.   If you need a more human readable name, you'll need a JSON configuration files.  If you use any passive tool (i.e. reflective markers for optical trackers), you will need a JSON configuration file.
+The JSON configuration file is optional.  It can be skipped if all your tools are active (i.e., If you need a more human readable name for your active tools, you'll need a JSON configuration files.  If you use any passive tool (i.e., reflective markers for optical trackers), you will need a JSON configuration file.
 
 Some examples of configuration files can be found in the `share` directory.  Here is an example for an active tool and a passive tool used on an older Polaris:
 ```json
 {
     // serial port is optional, if already defined (e.g. command line
     // argument), this will be ignored.  The Connect method will try
-    // to automaticaly find the serial port using a regular expresion
-    "serial-port": "/dev/ttyUSB0",
+    // to automatically find the serial port using a regular expression
+    "serial-port": "/dev/ttyUSB0",
 
     // definition path is a list of directories used to find tool
     // definition files (in order defined in this file).  By default,
@@ -81,6 +72,8 @@ Some examples of configuration files can be found in the `share` directory.  Her
     ]
 }
 ```
+
+The tool name will be used to create the cisstMultiTask required interface (see https://github.com/jhu-cisst/cisst/wiki/cisstMultiTask-concepts), Qt Widgets and ROS topics (see example below).
 
 When starting the example, the GUI will just show the controller view:
 ![GUI controller view](doc/gui-on-start.png "GUI on start, controller view")
@@ -140,5 +133,8 @@ evince frames.pdf
 In our example, the `Base` is defined with respect to the `Camera` and the `Pointer` is defined with respect to the `Base`:
 ![tf2](doc/frames.png "tf2")
 
+# Notes
 
+## Units
 
+By default NDI API reports distances in millimeters.   The `cisst` libraries used to implicitly rely on millimeters and grams but can now be configured to report distances in (preferred) SI units (i.e., meter, kg, N).   This setting can be changed in CMake while configuring `cisst` by setting the variable `CISST_USE_SI`.   The default is `CISST_USE_SI` is `0` (false) except when compiling with ROS catkin build tools (the default with ROS for `CISST_USE_SI` is `1`).   In your code, you can include `cisstConfig.h` and use the preprocessor variable `CISST_USE_SI` to handle both cases.   When running your program, you can also look at the `cisstLog.txt` file, it will contain a line indicating if `CISST_USE_SI` is true or false.
