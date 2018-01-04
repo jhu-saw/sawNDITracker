@@ -2,7 +2,7 @@
 {
     // serial port is optional, if already defined (e.g. command line
     // argument), this will be ignored.  The Connect method will try
-    // to automaticaly find the serial port using a regular expresion
+    // to automatically find the serial port using a regular expression
     "serial-port": "/dev/ttyUSB0",
 
     // definition path is a list of directories used to find tool
