@@ -2,7 +2,7 @@
   <name>saw_ndi_tracker_igtl</name>
   <version>1.0.0</version>
   <description>
-  sawNDITrackers
+  sawNDITracker with sawOpenIGTLink
   </description>
   <maintainer email="anton.deguet@jhu.edu">Anton Deguet</maintainer>
   <license>cisst</license>

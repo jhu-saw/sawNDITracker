@@ -21,16 +21,16 @@ set (REQUIRED_CISST_LIBRARIES cisstCommon
                               cisstParameterTypes)
 
 # find cisst and make sure the required libraries have been compiled
-find_package (cisst 1.0.9 REQUIRED ${REQUIRED_CISST_LIBRARIES})
+find_package (cisst 1.0.9 COMPONENTS ${REQUIRED_CISST_LIBRARIES})
 
-if (cisst_FOUND)
+if (cisst_FOUND_AS_REQUIRED)
 
   # load cisst configuration
   include (${CISST_USE_FILE})
 
   # catkin/ROS paths
-  cisst_is_catkin_build (sawForceDimensionSDKExamples_IS_CATKIN_BUILT)
-  if (sawForceDimensionSDKExamples_IS_CATKIN_BUILT)
+  cisst_is_catkin_build (sawNDITrackerExamples_IS_CATKIN_BUILT)
+  if (sawNDITrackerExamples_IS_CATKIN_BUILT)
     set (EXECUTABLE_OUTPUT_PATH "${CATKIN_DEVEL_PREFIX}/bin")
   endif ()
 
@@ -58,4 +58,4 @@ if (cisst_FOUND)
 
   endif (sawNDITracker_FOUND)
 
-endif (cisst_FOUND)
+endif (cisst_FOUND_AS_REQUIRED)

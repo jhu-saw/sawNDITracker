@@ -29,8 +29,8 @@ if (cisst_FOUND)
   include (${CISST_USE_FILE})
 
   # catkin/ROS paths
-  cisst_is_catkin_build (sawForceDimensionSDKExamples_IS_CATKIN_BUILT)
-  if (sawForceDimensionSDKExamples_IS_CATKIN_BUILT)
+  cisst_is_catkin_build (sawNDITrackerExamples_IS_CATKIN_BUILT)
+  if (sawNDITrackerExamples_IS_CATKIN_BUILT)
     set (EXECUTABLE_OUTPUT_PATH "${CATKIN_DEVEL_PREFIX}/bin")
   endif ()
 
@@ -46,11 +46,11 @@ if (cisst_FOUND)
     link_directories (${sawNDITracker_LIBRARY_DIR}
                       ${sawOpenIGTLink_LIBRARY_DIR})
 
-    add_executable (sawNDITrackerQtExample mainQt.cpp)
-    set_property (TARGET sawNDITrackerQtExample PROPERTY FOLDER "sawNDITracker")
+    add_executable (sawNDITrackerIGTLQtExample mainQt.cpp)
+    set_property (TARGET sawNDITrackerIGTLQtExample PROPERTY FOLDER "sawNDITracker")
 
     # link against non cisst libraries and saw components
-    target_link_libraries (sawNDITrackerQtExample
+    target_link_libraries (sawNDITrackerIGTLQtExample
                            ${sawNDITracker_LIBRARIES}
                            ${sawNDITrackerQt_LIBRARIES}
                            ${sawOpenIGTLink_LIBRARIES}
@@ -58,7 +58,7 @@ if (cisst_FOUND)
                            )
 
     # link against cisst libraries (and dependencies)
-    cisst_target_link_libraries (sawNDITrackerQtExample ${REQUIRED_CISST_LIBRARIES})
+    cisst_target_link_libraries (sawNDITrackerIGTLQtExample ${REQUIRED_CISST_LIBRARIES})
 
   endif (sawNDITracker_FOUND AND sawOpenIGTLink_FOUND)
 

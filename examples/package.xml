@@ -1,9 +1,7 @@
 <package>
   <name>saw_ndi_tracker_examples</name>
   <version>1.0.0</version>
-  <description>
-  sawNDITrackers
-  </description>
+  <description>sawNDITracker examples</description>
   <maintainer email="anton.deguet@jhu.edu">Anton Deguet</maintainer>
   <license>cisst</license>
   <url>https://github.com/jhu-saw/sawNDITracker</url>
@@ -19,5 +17,4 @@
   <export>
     <build_type>catkin</build_type>
   </export>
-
 </package>
