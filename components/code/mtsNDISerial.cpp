@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2017 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2018 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -165,7 +165,7 @@ void mtsNDISerial::Configure(const std::string & filename)
     // get tools defined by user
     const Json::Value jsonTools = jsonConfig["tools"];
     for (unsigned int index = 0; index < jsonTools.size(); ++index) {
-        std::string name, serialNumber, definition, reference;
+        std::string name, uniqueID, definition, reference;
         const Json::Value jsonTool = jsonTools[index];
         // --- name
         jsonValue = jsonTool["name"];
@@ -177,11 +177,11 @@ void mtsNDISerial::Configure(const std::string & filename)
             return;
         }
         // --- serial number
-        jsonValue = jsonTool["serial-number"];
+        jsonValue = jsonTool["unique-id"];
         if (!jsonValue.empty()) {
-            serialNumber = jsonValue.asString();
+            uniqueID = jsonValue.asString();
         } else {
-            CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to find \"serial-number\" for tools["
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to find \"unique-id\" for tools["
                                      << index << "]" << std::endl;
             return;
         }
@@ -217,7 +217,7 @@ void mtsNDISerial::Configure(const std::string & filename)
                                      << index << "].  Position will be reported wrt Camera frame" << std::endl;
         }
 
-        AddTool(name, serialNumber, definition, reference);
+        AddTool(name, uniqueID, definition, reference);
     }
 }
 
@@ -754,16 +754,16 @@ void mtsNDISerial::LoadToolDefinitionFile(const char * portHandle,
 }
 
 
-mtsNDISerial::Tool * mtsNDISerial::CheckTool(const std::string & serialNumber)
+mtsNDISerial::Tool * mtsNDISerial::CheckTool(const std::string & uniqueID)
 {
     const ToolsType::const_iterator end = mTools.end();
     ToolsType::const_iterator toolIterator;
     for (toolIterator = mTools.begin();
          toolIterator != end;
          ++toolIterator) {
-        if (toolIterator->second->SerialNumber == serialNumber) {
-            CMN_LOG_CLASS_INIT_DEBUG << "CheckTool: found existing tool for serial number: "
-                                     << serialNumber << std::endl;
+        if (toolIterator->second->UniqueID == uniqueID) {
+            CMN_LOG_CLASS_INIT_DEBUG << "CheckTool: found existing tool for unique ID: "
+                                     << uniqueID << std::endl;
             return toolIterator->second;
         }
     }
@@ -772,21 +772,21 @@ mtsNDISerial::Tool * mtsNDISerial::CheckTool(const std::string & serialNumber)
 
 
 mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
-                                           const std::string & serialNumber,
+                                           const std::string & uniqueID,
                                            const std::string & toolDefinitionFile,
                                            const std::string & reference)
 {
-    Tool * tool = CheckTool(serialNumber);
+    Tool * tool = CheckTool(uniqueID);
 
     if (tool) {
-        CMN_LOG_CLASS_INIT_WARNING << "AddTool: there's already a tool with serial number \"" << serialNumber
+        CMN_LOG_CLASS_INIT_WARNING << "AddTool: there's already a tool with unique ID \"" << uniqueID
                                    << "\", name: " << name << ".  Ignoring request to add tool" << std::endl;
         return tool;
     }
 
     tool = new Tool();
     tool->Name = name;
-    tool->SerialNumber = serialNumber;
+    tool->UniqueID = uniqueID;
     tool->Definition = toolDefinitionFile;
     tool->ReferenceFrame = reference;
 
@@ -797,7 +797,7 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
         return 0;
     }
     CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: created tool \"" << name
-                               << "\" with serial number: " << serialNumber << std::endl;
+                               << "\" with unique ID: " << uniqueID << std::endl;
 
     // create an interface for tool
     tool->Interface = AddInterfaceProvided(name);
@@ -935,24 +935,46 @@ void mtsNDISerial::PortHandlesQuery(void)
         portHandles[i][2] = '\0';
     }
 
-    Tool * tool;
-    std::string toolKey;
     mPortToTool.clear();
-    char mainType[3];
-    mainType[2] = '\0';
-    char serialNumber[9];
-    serialNumber[8] = '\0';
-    char channel[2];
 
+    Tool * tool;
     for (unsigned int i = 0; i < portHandles.size(); i++) {
+
+        char mainType[3];
+        mainType[2] = '\0';
+
+        char manufacturerID[13];
+        manufacturerID[12] = '\0';
+
+        char toolRevision[4];
+        toolRevision[3] = '\0';
+
+        char serialNumber[9];
+        serialNumber[8] = '\0';
+
+        char channel[2];
+
+        // separate query
+        char partNumber[21];
+        partNumber[20] = '\0';
+
         CommandInitialize();
         CommandAppend("PHINF ");
         CommandAppend(portHandles[i].Pointer());
-        CommandAppend("0021");  // 21 = 1 || 20
+        CommandAppend("0021");  // 21 = 1 for tool info || 20 for physical port location
         CommandSend();
         ResponseRead();
-        sscanf(mSerialBuffer, "%2c%*1c%*1c%*2c%*2c%*12c%*3c%8c%*2c%*8c%*2c%*2c%2c",
-               mainType, serialNumber, channel);
+        // 2c - main type
+        // 1c - number of switches [ignored]
+        // 1c - number of visible LEDs [ignored]
+        // 2c - reserved [ignored]
+        // 2c - subtype [ignored]
+        // 12c - manufacturer ID
+        // 3c - tool revision
+        // 8c - serial number
+        // 2c - port status [ignored]
+        sscanf(mSerialBuffer, "%2c%*1c%*1c%*2c%*2c%12c%3c%8c%*2c%*8c%*2c%*2c%2c",
+               mainType, manufacturerID, toolRevision, serialNumber, channel);
 
         // create a unique pseudo-serialNumber to differentiate the second channel of Dual 5-DoF tools (Aurora only)
         if (strncmp(channel, "01", 2) == 0) {
@@ -968,27 +990,50 @@ void mtsNDISerial::PortHandlesQuery(void)
             return;
         }
 
+        // query the part number too
+        CommandInitialize();
+        CommandAppend("PHINF ");
+        CommandAppend(portHandles[i].Pointer());
+        CommandAppend("0004");
+        CommandSend();
+        ResponseRead();
+        sscanf(mSerialBuffer, "%20c", partNumber);
+
+        std::string partNumberString = partNumber;
+        std::replace(partNumberString.begin(), partNumberString.end(), ' ', '-');
+        partNumberString.erase(partNumberString.find_last_not_of('-') + 1);
+
         // generate a name and add (AddTool will skip existing tools)
-        std::string name = std::string(mainType) + '-' + std::string(serialNumber);
-        tool = AddTool(name, serialNumber, "", "");
+        const std::string uniqueID = std::string(mainType)
+            + '-' + std::string(serialNumber)
+            + '-' + partNumberString;
+        tool = AddTool(uniqueID, uniqueID);
 
         // update tool information
-        sscanf(mSerialBuffer, "%2c%*1X%*1X%*2c%*2c%12c%3c%*8c%*2c%20c",
-               tool->MainType, tool->ManufacturerID, tool->ToolRevision, tool->PartNumber);
-        strncpy(tool->PortHandle, portHandles[i].Pointer(), 2);
-
-        // associate the tool to its port handle
-        toolKey = portHandles[i].Pointer();
-        CMN_LOG_CLASS_INIT_VERBOSE << "PortHandlesQuery: associating " << tool->Name << " to port handle " << tool->PortHandle << std::endl;
-        mPortToTool.AddItem(toolKey, tool, CMN_LOG_LEVEL_INIT_ERROR);
-
-        CMN_LOG_CLASS_INIT_DEBUG << "PortHandlesQuery:\n"
-                                 << " * Port Handle: " << tool->PortHandle << "\n"
-                                 << " * Main Type: " << tool->MainType << "\n"
-                                 << " * Manufacturer ID: " << tool->ManufacturerID << "\n"
-                                 << " * Tool Revision: " << tool->ToolRevision << "\n"
-                                 << " * Serial Number: " << tool->SerialNumber << "\n"
-                                 << " * Part Number: " << tool->PartNumber << std::endl;
+        if (tool) {
+            // make sure we provide a way to copy/paste the unique ID
+            std::cerr << "PortHandlesQuery: found unique ID [" << uniqueID << "]" << std::endl; 
+            tool->MainType = mainType;
+            tool->SerialNumber = serialNumber;
+            tool->ManufacturerID = manufacturerID;
+            tool->ToolRevision = toolRevision;
+            tool->PartNumber = partNumberString;
+            strncpy(tool->PortHandle, portHandles[i].Pointer(), 3);
+            
+            // associate the tool to its port handle
+            const std::string toolKey = portHandles[i].Pointer();
+            CMN_LOG_CLASS_INIT_VERBOSE << "PortHandlesQuery: associating [" << tool->Name << "] to port handle " << tool->PortHandle << std::endl;
+            mPortToTool.AddItem(toolKey, tool, CMN_LOG_LEVEL_INIT_ERROR);
+            
+            CMN_LOG_CLASS_INIT_DEBUG << "PortHandlesQuery:\n"
+                                     << " * Unique ID: " << tool->UniqueID << "\n"
+                                     << " * Port Handle: " << tool->PortHandle << "\n"
+                                     << " * Main Type: " << tool->MainType << "\n"
+                                     << " * Manufacturer ID: " << tool->ManufacturerID << "\n"
+                                     << " * Tool Revision: " << tool->ToolRevision << "\n"
+                                     << " * Serial Number: " << tool->SerialNumber << "\n"
+                                     << " * Part Number: " << tool->PartNumber << std::endl;
+        }
     }
 }
 
@@ -1025,15 +1070,15 @@ void mtsNDISerial::PortHandlesEnable(void)
             return;
         }
 
-        if (strncmp(tool->MainType, "01", 2) == 0) {  // reference
+        if (tool->MainType == std::string("01")) {  // reference
             CommandAppend("S");  // static
-        } else if (strncmp(tool->MainType, "02", 2) == 0) {  // probe
+        } else if (tool->MainType == std::string("02")) {  // probe
             CommandAppend("D");  // dynamic
-        } else if (strncmp(tool->MainType, "03", 2) == 0) {  // button box or foot switch
+        } else if (tool->MainType == std::string("03")) {  // button box or foot switch
             CommandAppend("B");  // button box
-        } else if (strncmp(tool->MainType, "04", 2) == 0) {  // software-defined
+        } else if (tool->MainType == std::string("04")) {  // software-defined
             CommandAppend("D");  // dynamic
-        } else if (strncmp(tool->MainType, "0A", 2) == 0) {  // C-arm tracker
+        } else if (tool->MainType == std::string("0A")) {  // C-arm tracker
             CommandAppend("D");  // dynamic
         } else {
             CMN_LOG_CLASS_RUN_ERROR << "PortHandlesEnable: unknown tool of main type: " << tool->MainType << std::endl;
@@ -1283,10 +1328,4 @@ mtsNDISerial::Tool::Tool(void):
     ReferenceTool(0)
 {
     PortHandle[2] = '\0';
-    MainType[2] = '\0';
-    ManufacturerID[12] = '\0';
-    ToolRevision[3] = '\0';
-    SerialNumber.resize(9); // SerialNumber is an std::string, not a static array
-    SerialNumber[8] = '\0';
-    PartNumber[20] = '\0';
 }

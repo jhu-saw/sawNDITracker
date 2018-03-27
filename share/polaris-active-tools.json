@@ -16,13 +16,13 @@
         {
             // active tool
             "name": "Base",
-            "serial-number": "3288C807"
+            "unique-id": "01-3288C807-8700223"
         }
         ,
         {
             // passive tool, must be defined after Base since it uses Base as reference frame
             "name": "Pointer",
-            "serial-number": "34801403",
+            "unique-id": "01-34801403-8700339",
             "definition": "8700339.rom", // this is a passive tool, the definition has to be provided
             "reference" : "Base"
         }
