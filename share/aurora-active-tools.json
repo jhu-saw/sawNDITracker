@@ -14,17 +14,13 @@
     // list of tools to be tracked
     "tools": [
         {
-            // active tool
-            "name": "Base",
-            "unique-id": "01-3288C807-8700223"
+            "name": "Marker1",
+            "unique-id": "01-3ACC9000-610066---T6D0-S01293"
         }
         ,
         {
-            // passive tool, must be defined after Base since it uses Base as reference frame
-            "name": "Pointer",
-            "unique-id": "02-3B115800-960556",
-            "definition": "medtronic-PN960556.rom", // this is a passive tool, the definition has to be provided
-            "reference" : "Base"
+            "name": "Marker2",
+            "unique-id": "01-3ACC9000-610066---T6D0-S01296"
         }
     ]
 }

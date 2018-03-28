@@ -1270,7 +1270,7 @@ void mtsNDISerial::Track(void)
         if (tool->PositionLocal.Valid()) {
             if (tool->ReferenceTool) {
                 // set as valid and change reference frame
-                tool->Position.SetValid(true);
+                tool->Position.SetValid(tool->ReferenceTool->Position.Valid());
                 tool->Position.Position() = tool->ReferenceTool->Position.Position().Inverse()
                     * tool->PositionLocal.Position();
             } else {
