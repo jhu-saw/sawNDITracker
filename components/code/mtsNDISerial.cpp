@@ -43,7 +43,7 @@ inline bool Glob(const std::string & pattern, std::vector<std::string> & paths) 
 
 void mtsNDISerial::Init(void)
 {
-    mReadTimeout = 2.0 * cmn_s;
+    mReadTimeout = 5.0 * cmn_s;
     mIsTracking = false;
     mTrackStrayMarkers = true;
     mStrayMarkers.SetSize(50, 5);
@@ -1012,19 +1012,19 @@ void mtsNDISerial::PortHandlesQuery(void)
         // update tool information
         if (tool) {
             // make sure we provide a way to copy/paste the unique ID
-            std::cerr << "PortHandlesQuery: found unique ID [" << uniqueID << "]" << std::endl; 
+            std::cerr << "PortHandlesQuery: found unique ID [" << uniqueID << "]" << std::endl;
             tool->MainType = mainType;
             tool->SerialNumber = serialNumber;
             tool->ManufacturerID = manufacturerID;
             tool->ToolRevision = toolRevision;
             tool->PartNumber = partNumberString;
             strncpy(tool->PortHandle, portHandles[i].Pointer(), 3);
-            
+
             // associate the tool to its port handle
             const std::string toolKey = portHandles[i].Pointer();
             CMN_LOG_CLASS_INIT_VERBOSE << "PortHandlesQuery: associating [" << tool->Name << "] to port handle " << tool->PortHandle << std::endl;
             mPortToTool.AddItem(toolKey, tool, CMN_LOG_LEVEL_INIT_ERROR);
-            
+
             CMN_LOG_CLASS_INIT_DEBUG << "PortHandlesQuery:\n"
                                      << " * Unique ID: " << tool->UniqueID << "\n"
                                      << " * Port Handle: " << tool->PortHandle << "\n"

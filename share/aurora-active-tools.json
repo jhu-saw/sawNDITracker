@@ -22,5 +22,11 @@
             "name": "Marker2",
             "unique-id": "01-3ACC9000-610066---T6D0-S01296"
         }
+        ,
+        {
+            "name": "probe",
+            "unique-id": "02-3B007000-610016-T6A0-L00053",
+            "reference": "Marker1"
+        }
     ]
 }
