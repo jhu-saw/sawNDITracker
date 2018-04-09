@@ -100,7 +100,7 @@ int main(int argc, char * argv[])
     cmnQt::QApplicationExitsOnCtrlC();
 
     // create the components
-    mtsNDISerial * tracker = new mtsNDISerial("NDI", 50.0 * cmn_ms);
+    mtsNDISerial * tracker = new mtsNDISerial("NDI", 10.0 * cmn_ms);
     if (port != "") {
         tracker->SetSerialPort(port);
     }
