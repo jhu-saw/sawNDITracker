@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2017 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2018 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -80,27 +80,35 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
         std::string ReferenceFrame;
         Tool * ReferenceTool;
 
+        std::string UniqueID;
         char PortHandle[3];
         // PHINF 0001
-        char MainType[3];
-        char ManufacturerID[13];
-        char ToolRevision[4];
+        std::string MainType;
+        std::string ManufacturerID;
+        std::string ToolRevision;
         std::string SerialNumber;
         // PHINF 0004
-        char PartNumber[21];
+        std::string PartNumber;
         std::string Definition;
     };
 
  public:
     inline mtsNDISerial(const std::string & taskName, const double period):
-        mtsTaskPeriodic(taskName, period, false, 5000) {
+        mtsTaskPeriodic(taskName, period, false, 5000),
+        mTools("Tools", this->Services()),
+        mPortToTool("PortToTool", this->Services())
+    {
         Init();
     }
 
     inline mtsNDISerial(const mtsTaskPeriodicConstructorArg & arg):
-        mtsTaskPeriodic(arg) {
+        mtsTaskPeriodic(arg),
+        mTools("Tools", this->Services()),
+        mPortToTool("PortToTool", this->Services())
+    {
         Init();
     }
+
     ~mtsNDISerial(void) {};
 
     /*! Set the name of the serial port to use.  If the serial port is
@@ -190,11 +198,11 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     void Beep(const int & numberOfBeeps);
 
     void LoadToolDefinitionFile(const char * portHandle, const std::string & filePath);
-    Tool * CheckTool(const std::string & serialNumber);
+    Tool * CheckTool(const std::string & uniqueID);
     Tool * AddTool(const std::string & name,
-                   const std::string & serialNumber,
-                   const std::string & toolDefinitionFile,
-                   const std::string & reference);
+                   const std::string & uniqueID,
+                   const std::string & toolDefinitionFile = "",
+                   const std::string & reference = "");
 
     void ToggleTracking(const bool & track);
     void ToggleStrayMarkers(const bool & stray);

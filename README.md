@@ -59,13 +59,13 @@ Some examples of configuration files can be found in the `share` directory.  Her
         {
             // active tool
             "name": "Base",
-            "serial-number": "3288C807"
+            "unique-id": "01-3288C807-8700223"
         }
 	,
         {
             // passive tool, must be defined after Base since it uses Base as reference frame
             "name": "Pointer",
-            "serial-number": "34801403",
+            "unique-id": "01-34801403-8700339",
             "definition": "8700339.rom", // this is a passive tool, the definition has to be provided
             "reference" : "Base"
         }
@@ -122,7 +122,7 @@ Once the node is started AND connected, the following ROS topics should appear:
 /ndi/fiducials
 ```
 
-The topic names for the tools are based on the names in the configuration file or the serial numbers if there is no configuration file specified.
+The topic names for the tools are based on the names in the configuration file or the unique ID if there is no configuration file specified.
 
 You can also visualize the tf2 output using:
 ```sh

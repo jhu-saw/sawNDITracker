@@ -1,0 +1,30 @@
+/* -*- Mode: Javascript; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
+{
+    // serial port is optional, if already defined (e.g. command line
+    // argument), this will be ignored.  The Connect method will try
+    // to automatically find the serial port using a regular expression
+    "serial-port": "/dev/ttyUSB0",
+
+    // definition path is a list of directories used to find tool
+    // definition files (in order defined in this file).  By default,
+    // the search path include the current working directory as well
+    // as the source directory with suffix "share/roms" at the tail.
+    "definition-path": ["/a_directory", "/another_directory"],
+
+    // list of tools to be tracked
+    "tools": [
+        {
+            // active tool
+            "name": "Base",
+            "unique-id": "01-3288C807-8700223"
+        }
+        ,
+        {
+            // passive tool, must be defined after Base since it uses Base as reference frame
+            "name": "Pointer",
+            "unique-id": "02-3B115800-960556",
+            "definition": "medtronic-PN960556.rom", // this is a passive tool, the definition has to be provided
+            "reference" : "Base"
+        }
+    ]
+}
