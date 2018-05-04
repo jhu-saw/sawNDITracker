@@ -35,8 +35,8 @@ if (cisst_FOUND)
   endif ()
 
   # sawNDITracker has been compiled within cisst, we should find it automatically
-  find_package (sawNDITracker REQUIRED)
-  find_package (sawOpenIGTLink REQUIRED)
+  find_package (sawNDITracker)
+  find_package (sawOpenIGTLink)
 
   if (sawNDITracker_FOUND AND sawOpenIGTLink_FOUND)
 
@@ -60,6 +60,10 @@ if (cisst_FOUND)
     # link against cisst libraries (and dependencies)
     cisst_target_link_libraries (sawNDITrackerIGTLQtExample ${REQUIRED_CISST_LIBRARIES})
 
+  else (sawNDITracker_FOUND AND sawOpenIGTLink_FOUND)
+    message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires sawNDITracker and sawOpenIGTLink")
   endif (sawNDITracker_FOUND AND sawOpenIGTLink_FOUND)
 
+else (cisst_FOUND)
+  message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires ${REQUIRED_CISST_LIBRARIES}")
 endif (cisst_FOUND)
