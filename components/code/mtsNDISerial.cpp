@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2018 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2019 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -1080,8 +1080,12 @@ void mtsNDISerial::PortHandlesEnable(void)
             CommandAppend("D");  // dynamic
         } else if (tool->MainType == std::string("0A")) {  // C-arm tracker
             CommandAppend("D");  // dynamic
+        } else if (tool->MainType == std::string("0B")) {  // ?? 6 DOF cable tool for Aurora
+            CommandAppend("D");  // dynamic
         } else {
-            CMN_LOG_CLASS_RUN_ERROR << "PortHandlesEnable: unknown tool of main type: " << tool->MainType << std::endl;
+            mControllerInterface->SendError(this->GetName()
+                                            + ": PortHandlesEnable: unknown tool of main type: "
+                                            + tool->MainType);
             return;
         }
         CommandSend();
