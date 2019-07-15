@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2018 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2019 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -23,8 +23,6 @@ http://www.cisst.org/cisst/license.txt.
   \warning Missing support for 14400bps, 921600bps and 1228739bps baud rates in osaSerialPort.
 
   \todo Consider deriving from mtsTaskContinuous using an "adaptive" sleep.
-  \todo Verify the need for existing sleep times.
-  \todo Enable individual tools on-the-fly (dynamically add their interfaces and Qt Widget).
   \todo Move CalibratePivot to cisstNumerical?
   \todo Error handling for partial and concatenated messages in ResponseRead()
   \todo Handle other main types of tools (besides pointer, reference, etc.).
@@ -35,8 +33,6 @@ http://www.cisst.org/cisst/license.txt.
   \todo Check for buffer overflow in CommandAppend.
   \todo Support for the extra features of newer Polaris versions.
   \todo Pretty print for SerialNumber, to extract date, etc..
-  \todo Create one state table per tool
-  \todo Use frame number to decide if timestamp should be refreshed (not needed if one state table per tool)
   \todo Use a map to convert Tool's MainType to human readable text.
   \todo Strategies for error recovery, send an event with a human readable payload, implement in CheckResponse.
 */
@@ -217,6 +213,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     mtsStateTable * mConfigurationStateTable;
     mtsInterfaceProvided * mControllerInterface;
 
+    std::string mTrackerName;
     std::string mSerialPortName;
     osaSerialPort mSerialPort;
     char mSerialBuffer[MAX_BUFFER_SIZE];
@@ -229,10 +226,13 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     cmnNamedMap<Tool> mPortToTool;
     std::vector<std::string> mToolNames;
 
+    std::string mStrayMarkersReferenceFrame;
+    Tool * mStrayMarkersReferenceTool;
+
     bool mIsTracking;
     bool mTrackStrayMarkers;
     mtsMatrix<double> mStrayMarkers;
-    std::vector<vct3> mMarkerPositions;
+    std::vector<vct3> mMarkerPositionsLocal, mMarkerPositions;
 
     double mReadTimeout;
     osaStopwatch mResponseTimer;

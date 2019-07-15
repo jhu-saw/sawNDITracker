@@ -124,6 +124,9 @@ void mtsNDISerialROS::AddROSTopics(const std::string & rosBridgeName,
     mROSBridge->AddPublisherFromCommandRead<std::vector<vct3>, sensor_msgs::PointCloud>
         ("Controller", "MarkerPositions",
          mROSNamespace + "/fiducials");
+    mROSBridge->AddPublisherFromCommandRead<std::vector<vct3>, sensor_msgs::PointCloud>
+        ("Controller", "MarkerPositionsLocal",
+         mROSNamespace + "/fiducials_local");
 
     // errors
     mROSBridge->AddPublisherFromEventWrite<mtsMessage, std_msgs::String>
@@ -177,6 +180,8 @@ void mtsNDISerialROS::UpdatedToolsEventHandler(void)
             // publishers
             mROSBridge->AddPublisherFromCommandRead<prmPositionCartesianGet, geometry_msgs::PoseStamped>
                 (name, "GetPositionCartesian", mROSNamespace + "/" + rosName + "/position_cartesian_current");
+            mROSBridge->AddPublisherFromCommandRead<prmPositionCartesianGet, geometry_msgs::PoseStamped>
+                (name, "GetPositionCartesianLocal", mROSNamespace + "/" + rosName + "/position_cartesian_local_current");
             manager->Connect(mROSBridgeName, name,
                              mTrackerName, name);
             // tf2
