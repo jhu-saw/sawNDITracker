@@ -42,6 +42,12 @@ http://www.cisst.org/cisst/license.txt.
 
 int main(int argc, char * argv[])
 {
+    // ---- WARNING: hack to remove ros args ----
+    ros::V_string argout;
+    ros::removeROSArgs(argc, argv, argout);
+    argc = argout.size();
+    // ------------------------------------------
+
     // parse options
     cmnCommandLineOptions options;
     std::string port;
