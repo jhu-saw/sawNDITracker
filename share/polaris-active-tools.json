@@ -11,6 +11,13 @@
     // as the source directory with suffix "share/roms" at the tail.
     "definition-path": ["/a_directory", "/another_directory"],
 
+    "name": "Polaris",
+
+    "stray-markers": {
+        "track": true,
+        "reference": "Base"
+    }
+    ,
     // list of tools to be tracked
     "tools": [
         {
@@ -25,6 +32,13 @@
             "unique-id": "02-3B115800-960556",
             "definition": "medtronic-PN960556.rom", // this is a passive tool, the definition has to be provided
             "reference" : "Base"
+        }
+        ,
+        {
+            // active tool
+            "name": "Tool",
+            "unique-id": "02-3091280C-TT001",
+            "reference": "Base"
         }
     ]
 }

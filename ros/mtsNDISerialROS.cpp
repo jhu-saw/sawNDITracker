@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2017-11-28
 
-  (C) Copyright 2017 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2017-2019 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -104,16 +104,36 @@ void mtsNDISerialROS::AddROSTopics(const std::string & rosBridgeName,
     }
 
     // add some controller ROS topics
+    // connection
     mROSBridge->AddSubscriberToCommandWrite<std::string, std_msgs::String>
         ("Controller", "Connect", mROSNamespace + "/connect");
+    mROSBridge->AddSubscriberToCommandVoid
+        ("Controller", "Disconnect", mROSNamespace + "/disconnect");
     mROSBridge->AddPublisherFromEventWrite<std::string, std_msgs::String>
         ("Controller", "Connected", mROSNamespace + "/connected");
+    // beep
+    mROSBridge->AddSubscriberToCommandWrite<int, std_msgs::Int32>
+        ("Controller", "Beep", mROSNamespace + "/beep");
+    // tracking
+    mROSBridge->AddSubscriberToCommandWrite<bool, std_msgs::Bool>
+        ("Controller", "ToggleTracking", mROSNamespace + "/track");
+    mROSBridge->AddPublisherFromEventWrite<bool, std_msgs::Bool>
+        ("Controller", "Tracking", mROSNamespace + "/tracking");
 
-    // add ROS bridge for stray markers
+    // stray markers
     mROSBridge->AddPublisherFromCommandRead<std::vector<vct3>, sensor_msgs::PointCloud>
         ("Controller", "MarkerPositions",
          mROSNamespace + "/fiducials");
+    mROSBridge->AddPublisherFromCommandRead<std::vector<vct3>, sensor_msgs::PointCloud>
+        ("Controller", "MarkerPositionsLocal",
+         mROSNamespace + "/fiducials_local");
 
+    // errors
+    mROSBridge->AddPublisherFromEventWrite<mtsMessage, std_msgs::String>
+        ("Controller", "Error",
+         mROSNamespace + "/error");
+
+    // connect bridge to NDI component::Controller interface
     manager->Connect(mROSBridgeName, "Controller",
                      mTrackerName, "Controller");
 }
@@ -160,6 +180,8 @@ void mtsNDISerialROS::UpdatedToolsEventHandler(void)
             // publishers
             mROSBridge->AddPublisherFromCommandRead<prmPositionCartesianGet, geometry_msgs::PoseStamped>
                 (name, "GetPositionCartesian", mROSNamespace + "/" + rosName + "/position_cartesian_current");
+            mROSBridge->AddPublisherFromCommandRead<prmPositionCartesianGet, geometry_msgs::PoseStamped>
+                (name, "GetPositionCartesianLocal", mROSNamespace + "/" + rosName + "/position_cartesian_local_current");
             manager->Connect(mROSBridgeName, name,
                              mTrackerName, name);
             // tf2
