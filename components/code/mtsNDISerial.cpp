@@ -49,6 +49,7 @@ void mtsNDISerial::Init(void)
     mTrackStrayMarkers = true;
     mStrayMarkers.SetSize(50, 5);
     mStrayMarkers.Zeros();
+    mStrayMarkersReferenceTool = 0;
     memset(mSerialBuffer, 0, MAX_BUFFER_SIZE);
     mSerialBufferPointer = mSerialBuffer;
 
