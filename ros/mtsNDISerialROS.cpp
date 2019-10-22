@@ -182,6 +182,8 @@ void mtsNDISerialROS::UpdatedToolsEventHandler(void)
                 (name, "GetPositionCartesian", mROSNamespace + "/" + rosName + "/position_cartesian_current");
             mROSBridge->AddPublisherFromCommandRead<prmPositionCartesianGet, geometry_msgs::PoseStamped>
                 (name, "GetPositionCartesianLocal", mROSNamespace + "/" + rosName + "/position_cartesian_local_current");
+            mROSBridge->AddPublisherFromCommandRead<double, std_msgs::Float64>
+                (name, "GetErrorRMS", mROSNamespace + "/" + rosName + "/error_value");
             manager->Connect(mROSBridgeName, name,
                              mTrackerName, name);
             // tf2
