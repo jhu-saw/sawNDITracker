@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2017-12-04
 
-  (C) Copyright 2017-2019 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2017-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -49,17 +49,14 @@ int main(int argc, char * argv[])
     cmnLogger::SetMaskClassMatching("mtsNDISerial*", CMN_LOG_ALLOW_ALL);
     cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
-    // ---- WARNING: hack to remove ros args ----
-    ros::V_string argout;
-    ros::removeROSArgs(argc, argv, argout);
-    argc = argout.size();
-    // ------------------------------------------
+    // create ROS node handle
+    ros::init(argc, argv, "dvrk", ros::init_options::AnonymousName);
+    ros::NodeHandle rosNodeHandle;
 
     // parse options
     cmnCommandLineOptions options;
     std::string port;
     std::string configFile;
-    std::string rosNamespace = "/ndi";
     double rosPeriod = 20.0 * cmn_ms;
     double tfPeriod = 20.0 * cmn_ms;
 
@@ -74,10 +71,6 @@ int main(int argc, char * argv[])
     options.AddOptionNoValue("l", "log-serial",
                              "log all serial port read/writes in cisstLog.txt");
 
-    options.AddOptionOneValue("n", "ros-namespace",
-                              "ROS namespace to prefix all topics, must have start and end \"/\" (default /ndi/)",
-                              cmnCommandLineOptions::OPTIONAL_OPTION, &rosNamespace);
-
     options.AddOptionOneValue("p", "ros-period",
                               "period in seconds to read all components and publish (default 0.02, 20 ms, 50Hz).  There is no point to have a period higher than the tracker's period",
                               cmnCommandLineOptions::OPTIONAL_OPTION, &rosPeriod);
@@ -86,6 +79,8 @@ int main(int argc, char * argv[])
                               "period in seconds to read all components and broadcast tf2 (default 0.02, 20 ms, 50Hz).  There is no point to have a period higher than the tracker's period",
                               cmnCommandLineOptions::OPTIONAL_OPTION, &tfPeriod);
 
+    options.AddOptionNoValue("D", "dark-mode",
+                             "replaces the default Qt palette with darker colors");
 
     // check that all required options have been provided
     std::string errorMessage;
@@ -111,6 +106,9 @@ int main(int argc, char * argv[])
     // create a Qt user interface
     QApplication application(argc, argv);
     cmnQt::QApplicationExitsOnCtrlC();
+    if (options.IsSet("dark-mode")) {
+        cmnQt::SetDarkMode();
+    }
 
     // create the components
     mtsNDISerial * tracker = new mtsNDISerial("NDI", 10.0 * cmn_ms);
@@ -153,21 +151,22 @@ int main(int argc, char * argv[])
 
     // ROS topics
     // ros wrapper for arms and optionally IOs
-    std::string bridgeName = "sawNDITracker_" + rosNamespace;
+    std::string bridgeName = "sawNDITracker" + port;
     bridgeName = ros::names::clean(bridgeName);
     std::replace(bridgeName.begin(), bridgeName.end(), '/', '_');
     std::replace(bridgeName.begin(), bridgeName.end(), '-', '_');
     std::replace(bridgeName.begin(), bridgeName.end(), '.', '_');
-    mtsROSBridge rosBridge(bridgeName, rosPeriod, true, false); // spin, don't catch sigint
+    mtsROSBridge rosBridge(bridgeName, rosPeriod, &rosNodeHandle);
+    rosBridge.PerformsSpin(true);
     componentManager->AddComponent(&rosBridge);
 
-    mtsROSBridge tfBridge(bridgeName + "_tf2", tfPeriod, true, false); // spin, don't catch sigint
+    mtsROSBridge tfBridge(bridgeName + "_tf2", tfPeriod, &rosNodeHandle); // spin, don't catch sigint
     componentManager->AddComponent(&tfBridge);
 
     mtsNDISerialROS * trackerROS = new mtsNDISerialROS("NDI ROS");
     componentManager->AddComponent(trackerROS);
     trackerROS->AddROSTopics(rosBridge.GetName(), tfBridge.GetName(),
-                             tracker->GetName(), rosNamespace);
+                             tracker->GetName());
     componentManager->Connect(trackerROS->GetName(), "Controller",
                               tracker->GetName(), "Controller");
 
@@ -183,6 +182,12 @@ int main(int argc, char * argv[])
 
     // run Qt user interface
     application.exec();
+
+    // stop all logs
+    cmnLogger::Kill();
+
+    // stop ROS node
+    ros::shutdown();
 
     // kill all components and perform cleanup
     componentManager->KillAllAndWait(5.0 * cmn_s);

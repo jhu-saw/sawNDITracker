@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2017-11-28
 
-  (C) Copyright 2017 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2017-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -41,8 +41,7 @@ class mtsNDISerialROS: public mtsTaskFromSignal
 
     void AddROSTopics(const std::string & rosBridgeName,
                       const std::string & tfBridgeName,
-                      const std::string & trackerName,
-                      const std::string & rosNamespace);
+                      const std::string & trackerName);
  private:
     void Init(void);
 
@@ -53,7 +52,6 @@ class mtsNDISerialROS: public mtsTaskFromSignal
     std::string mROSBridgeName;
     std::string mTFBridgeName;
     std::string mTrackerName;
-    std::string mROSNamespace;
     mtsROSBridge * mROSBridge;
     mtsROSBridge * mTFBridge;
 

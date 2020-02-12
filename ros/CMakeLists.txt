@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2009-2017 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2009-2020 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -28,7 +28,6 @@ find_package (catkin REQUIRED
 # create a list of required cisst libraries
 set (REQUIRED_CISST_LIBRARIES cisstCommon
                               cisstCommonQt
-                              cisstCommonXML
                               cisstVector
                               cisstNumerical
                               cisstOSAbstraction
