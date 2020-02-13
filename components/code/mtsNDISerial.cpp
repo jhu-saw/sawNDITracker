@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2019 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -263,6 +263,19 @@ void mtsNDISerial::Configure(const std::string & filename)
                                      << "\".  Make sure reference frame/tool exists!" << std::endl;
             mStrayMarkersReferenceFrame = mTrackerName;
         }
+    }
+
+    // try to connect after configuring if serial port is defined
+    if (mSerialPortName != "") {
+        Connect(mSerialPortName);
+    }
+}
+
+void mtsNDISerial::Startup(void)
+{
+    if (mSerialPort.IsOpened()) {
+        Events.Connected(mSerialPortName);
+        Events.UpdatedTools();
     }
 }
 

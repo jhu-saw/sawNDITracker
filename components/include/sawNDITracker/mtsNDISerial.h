@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2019 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -118,7 +118,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
       Port search and rom loading will happen when first
       connected. */
     void Configure(const std::string & filename = "");
-    inline void Startup(void) {};
+    inline void Startup(void);
     void Run(void);
     void Cleanup(void);
 
