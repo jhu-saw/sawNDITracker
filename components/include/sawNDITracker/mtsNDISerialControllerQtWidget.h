@@ -21,9 +21,6 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisstMultiTask/mtsComponent.h>
 
-#include <cisstParameterTypes/prmPositionCartesianGet.h>
-#include <cisstParameterTypes/prmPositionCartesianGetQtWidget.h>
-
 #include <cisstMultiTask/mtsIntervalStatisticsQtWidget.h>
 #include <cisstMultiTask/mtsMessageQtWidget.h>
 
@@ -70,7 +67,6 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
         mtsFunctionVoid  Disconnect;
         mtsFunctionVoid  InitializeAll;
         mtsFunctionRead  Name;
-        mtsFunctionRead  ToolNames;
         mtsFunctionWrite Track;
         mtsFunctionWrite Beep;
     } Tracker;
@@ -83,7 +79,6 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
     QCheckBox * QCBTrack;
     QPushButton * QPBBeepButton;
     QSpinBox * QSBBeepCount;
-    QGridLayout * QGTools;
 
     // Timing
     mtsIntervalStatistics IntervalStatistics;
@@ -94,16 +89,6 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
 
     void SetControlWidgetsEnabled(const bool enabled);
 
-    struct Tool {
-        prmPositionCartesianGetQtWidget * Widget;
-        mtsInterfaceRequired * Interface;
-        mtsFunctionRead measured_cp;
-        prmPositionCartesianGet Position;
-    };
-
-    typedef cmnNamedMap<Tool> ToolMap;
-    ToolMap Tools;
-
  private slots:
     void SlotConnect(bool);
     void SlotInitializeAll(void);
@@ -111,16 +96,13 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
     void SlotBeep(void);
 
     void SlotConnectedEvent(void);
-    void SlotUpdatedToolsEvent(void);
 
  signals:
     void SignalConnectedEvent(void);
-    void SignalUpdatedToolsEvent(void);
 
  private:
     void ConnectedEventHandler(const std::string & connected);
     void TrackingEventHandler(const bool & tracking);
-    void UpdatedToolsEventHandler(void);
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsNDISerialControllerQtWidget);

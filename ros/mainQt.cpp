@@ -28,13 +28,11 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstCommon/cmnQt.h>
 
 #include <cisstMultiTask/mtsTaskManager.h>
-
+#include <cisstParameterTypes/prmPositionCartesianGetQtWidgetFactory.h>
 #include <sawNDITracker/mtsNDISerial.h>
 #include <sawNDITracker/mtsNDISerialControllerQtWidget.h>
 
-#include "mtsNDISerialROS.h"
-#include <ros/ros.h>
-#include <cisst_ros_bridge/mtsROSBridge.h>
+#include <cisst_ros_crtk/mts_ros_crtk_bridge.h>
 
 #include <QApplication>
 #include <QMainWindow>
@@ -116,6 +114,9 @@ int main(int argc, char * argv[])
         cmnQt::SetDarkMode();
     }
 
+    // organize all widgets in a tab widget
+    QTabWidget * tabWidget = new QTabWidget;
+
     // create the components
     mtsNDISerial * tracker = new mtsNDISerial("NDI", 10.0 * cmn_ms);
     if (port != "") {
@@ -155,26 +156,22 @@ int main(int argc, char * argv[])
     componentManager->Connect(trackerWidget->GetName(), "Controller",
                               tracker->GetName(), "Controller");
 
-    // ROS topics
-    // ros wrapper for arms and optionally IOs
-    std::string bridgeName = "sawNDITracker" + port;
-    bridgeName = ros::names::clean(bridgeName);
-    std::replace(bridgeName.begin(), bridgeName.end(), '/', '_');
-    std::replace(bridgeName.begin(), bridgeName.end(), '-', '_');
-    std::replace(bridgeName.begin(), bridgeName.end(), '.', '_');
-    mtsROSBridge rosBridge(bridgeName, rosPeriod, &rosNodeHandle);
-    rosBridge.PerformsSpin(true);
-    componentManager->AddComponent(&rosBridge);
+    tabWidget->addTab(trackerWidget, "Controller");
 
-    mtsROSBridge tfBridge(bridgeName + "_tf2", tfPeriod, &rosNodeHandle); // spin, don't catch sigint
-    componentManager->AddComponent(&tfBridge);
+    // tool position widgets
+    prmPositionCartesianGetQtWidgetFactory * positionQtWidgetFactory
+        = new prmPositionCartesianGetQtWidgetFactory("positionQtWidgetFactory");
+    positionQtWidgetFactory->AddFactorySource(tracker->GetName(), "Controller");
+    componentManager->AddComponent(positionQtWidgetFactory);
+    positionQtWidgetFactory->Connect();
+    tabWidget->addTab(positionQtWidgetFactory, "Tools");
 
-    mtsNDISerialROS * trackerROS = new mtsNDISerialROS("NDI ROS");
-    componentManager->AddComponent(trackerROS);
-    trackerROS->AddROSTopics(rosBridge.GetName(), tfBridge.GetName(),
-                             tracker->GetName());
-    componentManager->Connect(trackerROS->GetName(), "Controller",
-                              tracker->GetName(), "Controller");
+    // ROS CRTK bridge
+    mts_ros_crtk_bridge * crtk_bridge
+        = new mts_ros_crtk_bridge("ndi_serial_crtk_bridge", &rosNodeHandle);
+    crtk_bridge->add_factory_source(tracker->GetName(), "Controller", rosPeriod, tfPeriod);
+    componentManager->AddComponent(crtk_bridge);
+    crtk_bridge->Connect();
 
     // custom user component
     const managerConfigType::iterator end = managerConfig.end();
@@ -198,13 +195,8 @@ int main(int argc, char * argv[])
     componentManager->CreateAllAndWait(5.0 * cmn_s);
     componentManager->StartAllAndWait(5.0 * cmn_s);
 
-    // create a main window to hold QWidgets
-    QMainWindow * mainWindow = new QMainWindow();
-    mainWindow->setCentralWidget(trackerWidget);
-    mainWindow->setWindowTitle("sawNDITracker");
-    mainWindow->show();
-
     // run Qt user interface
+    tabWidget->show();
     application.exec();
 
     // stop all logs

@@ -49,15 +49,12 @@ mtsNDISerialControllerQtWidget::mtsNDISerialControllerQtWidget(const std::string
         interfaceRequired->AddFunction("Disconnect", Tracker.Disconnect);
         interfaceRequired->AddFunction("InitializeAll", Tracker.InitializeAll);
         // ADV        interfaceRequired->AddFunction("Name", Tracker.Name);
-        interfaceRequired->AddFunction("ToolNames", Tracker.ToolNames);
         interfaceRequired->AddFunction("ToggleTracking", Tracker.Track);
         interfaceRequired->AddFunction("Beep", Tracker.Beep);
         interfaceRequired->AddEventHandlerWrite(&mtsNDISerialControllerQtWidget::ConnectedEventHandler,
                                                 this, "Connected");
         interfaceRequired->AddEventHandlerWrite(&mtsNDISerialControllerQtWidget::TrackingEventHandler,
                                                 this, "Tracking");
-        interfaceRequired->AddEventHandlerVoid(&mtsNDISerialControllerQtWidget::UpdatedToolsEventHandler,
-                                               this, "UpdatedTools");
     }
     setupUi();
     startTimer(TimerPeriodInMilliseconds); // ms
@@ -102,20 +99,8 @@ void mtsNDISerialControllerQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(event))
         return;
     }
 
-    mtsExecutionResult executionResult;
-
     Tracker.period_statistics(IntervalStatistics);
     QMIntervalStatistics->SetValue(IntervalStatistics);
-
-    const ToolMap::iterator end = Tools.end();
-    ToolMap::iterator toolIter;
-    for (toolIter = Tools.begin();
-         toolIter != end;
-         ++toolIter) {
-        Tool * tool = toolIter->second;
-        tool->measured_cp(tool->Position);
-        tool->Widget->SetValue(tool->Position);
-    }
 }
 
 void mtsNDISerialControllerQtWidget::setupUi(void)
@@ -191,10 +176,6 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
     QMMessage->setupUi();
     systemLayout->addWidget(QMMessage);
 
-    // Tools in a tab
-    QGTools = new QGridLayout();
-    mainLayout->addLayout(QGTools);
-
     setLayout(mainLayout);
     setWindowTitle("sawNDITracker");
     resize(sizeHint());
@@ -202,8 +183,6 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
     // connect slots/signal for cisst events
     connect(this, SIGNAL(SignalConnectedEvent()),
             this, SLOT(SlotConnectedEvent()));
-    connect(this, SIGNAL(SignalUpdatedToolsEvent()),
-            this, SLOT(SlotUpdatedToolsEvent()));
 
     // by default assumes the system is not connected
     SetControlWidgetsEnabled(false);
@@ -260,8 +239,6 @@ void mtsNDISerialControllerQtWidget::SlotConnectedEvent(void)
     } else {
         SetControlWidgetsEnabled(true);
         QLPortName->setText(mSerialPort.c_str());
-        // some tools might have been added before connect so update now
-        SlotUpdatedToolsEvent();
     }
 }
 
@@ -270,46 +247,4 @@ void mtsNDISerialControllerQtWidget::TrackingEventHandler(const bool & tracking)
     const bool oldState = QCBTrack->blockSignals(true);
     QCBTrack->setChecked(tracking);
     QCBTrack->blockSignals(oldState);
-}
-
-void mtsNDISerialControllerQtWidget::UpdatedToolsEventHandler(void)
-{
-    emit SignalUpdatedToolsEvent();
-}
-
-void mtsNDISerialControllerQtWidget::SlotUpdatedToolsEvent(void)
-{
-    std::string trackerName = "NDI";
-        // ADV Tracker.Name(trackerName);
-
-    std::vector<std::string> toolNames;
-    Tracker.ToolNames(toolNames);
-
-    for (size_t i = 0; i < toolNames.size(); ++i) {
-        std::string name = toolNames[i];
-        Tool * tool;
-        tool = Tools.GetItem(name);
-        // if it's not found, it is new
-        if (!tool) {
-            tool = new Tool;
-            // cisst interface
-            tool->Interface = this->AddInterfaceRequired(name);
-            tool->Interface->AddFunction("measured_cp", tool->measured_cp);
-            mtsComponentManager * manager = mtsComponentManager::GetInstance();
-            manager->Connect(trackerName, name,
-                             this->GetName(), name);
-            // Qt widget added to grid
-            const int NB_COLS = 2;
-            int position = static_cast<int>(Tools.size());
-            int row = position / NB_COLS;
-            int col = position % NB_COLS;
-            tool->Widget = new prmPositionCartesianGetQtWidget();
-            // busy wait until this is connected to retrieve moving/reference frames
-            while (!tool->measured_cp(tool->Position)) {
-                osaSleep(100.0 * cmn_ms);
-            }
-            QGTools->addWidget(tool->Widget, row, col);
-            Tools.AddItem(name, tool);
-        }
-    }
 }

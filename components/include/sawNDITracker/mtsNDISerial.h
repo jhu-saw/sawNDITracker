@@ -207,7 +207,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     struct {
         mtsFunctionWrite Connected;
         mtsFunctionWrite Tracking;
-        mtsFunctionVoid UpdatedTools;
+        mtsFunctionVoid m_crtk_interfaces_provided_updated;
     } Events;
 
     mtsStateTable * mConfigurationStateTable;
@@ -224,7 +224,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     typedef cmnNamedMap<Tool> ToolsType;
     ToolsType mTools;
     cmnNamedMap<Tool> mPortToTool;
-    std::vector<std::string> mToolNames;
+    std::vector<mtsDescriptionInterfaceFullName> m_crtk_interfaces_provided;
 
     std::string mStrayMarkersReferenceFrame;
     Tool * mStrayMarkersReferenceTool;

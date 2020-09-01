@@ -62,7 +62,7 @@ void mtsNDISerial::Init(void)
     this->AddStateTable(mConfigurationStateTable);
     mConfigurationStateTable->AddData(this->Name, "TrackerName");
     mConfigurationStateTable->AddData(mSerialPortName, "SerialPort");
-    mConfigurationStateTable->AddData(mToolNames, "ToolNames");
+    mConfigurationStateTable->AddData(m_crtk_interfaces_provided, "crtk_interfaces_provided");
 
     StateTable.AddData(mIsTracking, "IsTracking");
     StateTable.AddData(mTrackStrayMarkers, "TrackStrayMarkers");
@@ -83,7 +83,7 @@ void mtsNDISerial::Init(void)
         mControllerInterface->AddCommandWrite(&mtsNDISerial::ToggleTracking, this, "ToggleTracking");
         mControllerInterface->AddCommandReadState(*mConfigurationStateTable, this->Name, "Name");
         mControllerInterface->AddCommandReadState(*mConfigurationStateTable, mSerialPortName, "SerialPort");
-        mControllerInterface->AddCommandReadState(*mConfigurationStateTable, mToolNames, "ToolNames");
+        mControllerInterface->AddCommandReadState(*mConfigurationStateTable, m_crtk_interfaces_provided, "crtk_interfaces_provided");
         mControllerInterface->AddCommandReadState(StateTable, mIsTracking, "IsTracking");
         mControllerInterface->AddCommandReadState(StateTable, mTrackStrayMarkers, "TrackStrayMarkers");
         mControllerInterface->AddCommandReadState(StateTable, mMarkerPositionsLocal, "MarkerPositionsLocal");
@@ -93,7 +93,7 @@ void mtsNDISerial::Init(void)
                                                   "period_statistics");
         mControllerInterface->AddEventWrite(Events.Connected, "Connected", std::string(""));
         mControllerInterface->AddEventWrite(Events.Tracking, "Tracking", false);
-        mControllerInterface->AddEventVoid(Events.UpdatedTools, "UpdatedTools");
+        mControllerInterface->AddEventVoid(Events.m_crtk_interfaces_provided_updated, "crtk_interfaces_provided_updated");
     }
 
     mConfigurationStateTable->Start();
@@ -275,7 +275,7 @@ void mtsNDISerial::Startup(void)
 {
     if (mSerialPort.IsOpened()) {
         Events.Connected(mSerialPortName);
-        Events.UpdatedTools();
+        Events.m_crtk_interfaces_provided_updated();
     }
 }
 
@@ -891,9 +891,9 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
 
     // update list of existing tools
     mConfigurationStateTable->Start(); {
-        mToolNames = mTools.GetNames();
+        m_crtk_interfaces_provided.push_back(mtsDescriptionInterfaceFullName("localhost", this->Name, name));
     } mConfigurationStateTable->Advance();
-    Events.UpdatedTools();
+    Events.m_crtk_interfaces_provided_updated();
 
     return tool;
 }

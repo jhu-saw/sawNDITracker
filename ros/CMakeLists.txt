@@ -18,10 +18,8 @@ project (ndi_tracker_ros)
 ## is used, also find other catkin packages
 find_package (catkin REQUIRED
               COMPONENTS
-              cisst_ros_bridge
-              geometry_msgs
+              cisst_ros_crtk
               roscpp
-              std_msgs
               roslib
               )
 
@@ -32,7 +30,9 @@ set (REQUIRED_CISST_LIBRARIES cisstCommon
                               cisstNumerical
                               cisstOSAbstraction
                               cisstMultiTask
-                              cisstParameterTypes)
+                              cisstParameterTypes
+                              cisstParameterTypesQt
+			      cisstQt)
 
 # find cisst and make sure the required libraries have been compiled
 find_package (cisst 1.0.9 REQUIRED ${REQUIRED_CISST_LIBRARIES})
@@ -48,7 +48,7 @@ if (cisst_FOUND)
   file (MAKE_DIRECTORY "${CATKIN_DEVEL_PREFIX}/include")
 
   catkin_package (INCLUDE_DIRS "${CATKIN_DEVEL_PREFIX}/include"
-                  CATKIN_DEPENDS cisst_ros_bridge geometry_msgs roscpp std_msgs)
+                  CATKIN_DEPENDS cisst_ros_crtk roscpp roslib)
 
   # sawNDITracker has been compiled within cisst, we should find it automatically
   find_package (sawNDITracker REQUIRED)
@@ -59,13 +59,12 @@ if (cisst_FOUND)
     include_directories (${sawNDITracker_INCLUDE_DIR})
     link_directories (${sawNDITracker_LIBRARY_DIR})
 
-    add_executable (ndi_tracker mainQt.cpp mtsNDISerialROS.h mtsNDISerialROS.cpp)
+    add_executable (ndi_tracker mainQt.cpp)
 
     # link against non cisst libraries and saw components
     target_link_libraries (ndi_tracker
                            ${sawNDITracker_LIBRARIES}
                            ${sawNDITrackerQt_LIBRARIES}
-                           ${QT_LIBRARIES}
 			   ${catkin_LIBRARIES}
                            )
 

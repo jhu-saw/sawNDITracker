@@ -28,7 +28,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstCommon/cmnQt.h>
 
 #include <cisstMultiTask/mtsTaskManager.h>
-
+#include <cisstParameterTypes/prmPositionCartesianGetQtWidgetFactory.h>
 #include <sawNDITracker/mtsNDISerial.h>
 #include <sawNDITracker/mtsNDISerialControllerQtWidget.h>
 
@@ -133,11 +133,23 @@ int main(int argc, char * argv[])
         cmnQt::SetDarkMode();
     }
 
+    // organize all widgets in a tab widget
+    QTabWidget * tabWidget = new QTabWidget;
+
     // Qt widget
     mtsNDISerialControllerQtWidget * trackerWidget = new mtsNDISerialControllerQtWidget("NDI Widget");
     componentManager->AddComponent(trackerWidget);
     componentManager->Connect(trackerWidget->GetName(), "Controller",
                               tracker->GetName(), "Controller");
+    tabWidget->addTab(trackerWidget, "Controller");
+
+    // tool position widgets
+    prmPositionCartesianGetQtWidgetFactory * positionQtWidgetFactory
+        = new prmPositionCartesianGetQtWidgetFactory("positionQtWidgetFactory");
+    positionQtWidgetFactory->AddFactorySource(tracker->GetName(), "Controller");
+    componentManager->AddComponent(positionQtWidgetFactory);
+    positionQtWidgetFactory->Connect();
+    tabWidget->addTab(positionQtWidgetFactory, "Tools");
 
     // custom user component
     const managerConfigType::iterator end = managerConfig.end();
@@ -161,13 +173,8 @@ int main(int argc, char * argv[])
     componentManager->CreateAllAndWait(5.0 * cmn_s);
     componentManager->StartAllAndWait(5.0 * cmn_s);
 
-    // create a main window to hold QWidgets
-    QMainWindow * mainWindow = new QMainWindow();
-    mainWindow->setCentralWidget(trackerWidget);
-    mainWindow->setWindowTitle("sawNDITracker");
-    mainWindow->show();
-
     // run Qt user interface
+    tabWidget->show();
     application.exec();
 
     // kill all components and perform cleanup
