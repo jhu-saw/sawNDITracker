@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014-2017 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -65,7 +65,7 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
     std::string mSerialPort;
 
     struct {
-        mtsFunctionRead  GetPeriodStatistics;
+        mtsFunctionRead  period_statistics;
         mtsFunctionWrite Connect;
         mtsFunctionVoid  Disconnect;
         mtsFunctionVoid  InitializeAll;
@@ -97,7 +97,7 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
     struct Tool {
         prmPositionCartesianGetQtWidget * Widget;
         mtsInterfaceRequired * Interface;
-        mtsFunctionRead GetPositionCartesian;
+        mtsFunctionRead measured_cp;
         prmPositionCartesianGet Position;
     };
 

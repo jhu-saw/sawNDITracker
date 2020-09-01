@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014-2017 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -44,7 +44,7 @@ mtsNDISerialControllerQtWidget::mtsNDISerialControllerQtWidget(const std::string
     mtsInterfaceRequired * interfaceRequired = AddInterfaceRequired("Controller");
     if (interfaceRequired) {
         QMMessage->SetInterfaceRequired(interfaceRequired);
-        interfaceRequired->AddFunction("GetPeriodStatistics", Tracker.GetPeriodStatistics);
+        interfaceRequired->AddFunction("period_statistics", Tracker.period_statistics);
         interfaceRequired->AddFunction("Connect", Tracker.Connect);
         interfaceRequired->AddFunction("Disconnect", Tracker.Disconnect);
         interfaceRequired->AddFunction("InitializeAll", Tracker.InitializeAll);
@@ -104,7 +104,7 @@ void mtsNDISerialControllerQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(event))
 
     mtsExecutionResult executionResult;
 
-    Tracker.GetPeriodStatistics(IntervalStatistics);
+    Tracker.period_statistics(IntervalStatistics);
     QMIntervalStatistics->SetValue(IntervalStatistics);
 
     const ToolMap::iterator end = Tools.end();
@@ -113,7 +113,7 @@ void mtsNDISerialControllerQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(event))
          toolIter != end;
          ++toolIter) {
         Tool * tool = toolIter->second;
-        tool->GetPositionCartesian(tool->Position);
+        tool->measured_cp(tool->Position);
         tool->Widget->SetValue(tool->Position);
     }
 }
@@ -294,7 +294,7 @@ void mtsNDISerialControllerQtWidget::SlotUpdatedToolsEvent(void)
             tool = new Tool;
             // cisst interface
             tool->Interface = this->AddInterfaceRequired(name);
-            tool->Interface->AddFunction("GetPositionCartesian", tool->GetPositionCartesian);
+            tool->Interface->AddFunction("measured_cp", tool->measured_cp);
             mtsComponentManager * manager = mtsComponentManager::GetInstance();
             manager->Connect(trackerName, name,
                              this->GetName(), name);
@@ -305,7 +305,7 @@ void mtsNDISerialControllerQtWidget::SlotUpdatedToolsEvent(void)
             int col = position % NB_COLS;
             tool->Widget = new prmPositionCartesianGetQtWidget();
             // busy wait until this is connected to retrieve moving/reference frames
-            while (!tool->GetPositionCartesian(tool->Position)) {
+            while (!tool->measured_cp(tool->Position)) {
                 osaSleep(100.0 * cmn_ms);
             }
             QGTools->addWidget(tool->Widget, row, col);

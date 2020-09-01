@@ -90,7 +90,7 @@ void mtsNDISerial::Init(void)
         mControllerInterface->AddCommandReadState(StateTable, mMarkerPositions, "MarkerPositions");
         mControllerInterface->AddCommandReadState(StateTable, mStrayMarkers, "StrayMarkers");
         mControllerInterface->AddCommandReadState(StateTable, StateTable.PeriodStats,
-                                                  "GetPeriodStatistics");
+                                                  "period_statistics");
         mControllerInterface->AddEventWrite(Events.Connected, "Connected", std::string(""));
         mControllerInterface->AddEventWrite(Events.Tracking, "Tracking", false);
         mControllerInterface->AddEventVoid(Events.UpdatedTools, "UpdatedTools");
@@ -866,12 +866,12 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
         tool->Interface->AddCommandRead(&mtsStateTable::GetIndexReader, &StateTable, "GetTableIndex");
         // position wrt camera (raw position)
         StateTable.AddData(tool->PositionLocal, name + "PositionLocal");
-        tool->Interface->AddCommandReadState(StateTable, tool->PositionLocal, "GetPositionCartesianLocal");
+        tool->Interface->AddCommandReadState(StateTable, tool->PositionLocal, "local_measured_cp");
         tool->PositionLocal.SetReferenceFrame(mTrackerName);
         tool->PositionLocal.SetMovingFrame(name);
         // position wrt reference frame
         StateTable.AddData(tool->Position, name + "Position");
-        tool->Interface->AddCommandReadState(StateTable, tool->Position, "GetPositionCartesian");
+        tool->Interface->AddCommandReadState(StateTable, tool->Position, "measured_cp");
         tool->Position.SetMovingFrame(name);
         if (tool->ReferenceFrame != mTrackerName) {
             tool->ReferenceTool = mTools.GetItem(tool->ReferenceFrame, CMN_LOG_LEVEL_INIT_ERROR);

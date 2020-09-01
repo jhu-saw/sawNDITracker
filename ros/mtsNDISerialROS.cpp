@@ -180,13 +180,13 @@ void mtsNDISerialROS::UpdatedToolsEventHandler(void)
         if (!(mROSBridge->GetInterfaceRequired(name))) {
             // publishers
             mROSBridge->AddPublisherFromCommandRead<prmPositionCartesianGet, geometry_msgs::PoseStamped>
-                (name, "GetPositionCartesian", rosName + "/position_cartesian_current");
+                (name, "measured_cp", rosName + "/measured_cp");
             mROSBridge->AddPublisherFromCommandRead<prmPositionCartesianGet, geometry_msgs::PoseStamped>
-                (name, "GetPositionCartesianLocal", rosName + "/position_cartesian_local_current");
+                (name, "measured_cp_local", rosName + "/local/measured_cp");
             manager->Connect(mROSBridgeName, name,
                              mTrackerName, name);
             // tf2
-            mTFBridge->Addtf2BroadcasterFromCommandRead(name, "GetPositionCartesian");
+            mTFBridge->Addtf2BroadcasterFromCommandRead(name, "measured_cp");
             manager->Connect(mTFBridgeName, name,
                              mTrackerName, name);
         }

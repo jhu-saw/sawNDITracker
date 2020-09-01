@@ -86,7 +86,7 @@ controller.Beep(2)
 while True:
     time.sleep(0.5)
     for toolName, toolInterface in tools.items():
-        pose = toolInterface.GetPositionCartesian()
+        pose = toolInterface.measured_cp()
         if pose.GetValid():  # if visible
             print(toolName + ': ' + str(pose.Position().Translation()))
         else:
