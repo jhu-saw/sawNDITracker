@@ -56,17 +56,21 @@ if (cisst_FOUND)
   if (sawNDITracker_FOUND)
 
     # sawNDITracker configuration
-    include_directories (${sawNDITracker_INCLUDE_DIR})
+    include_directories (${sawNDITracker_INCLUDE_DIR} ${ndi_tracker_ros_SOURCE_DIR})
     link_directories (${sawNDITracker_LIBRARY_DIR})
+
+    add_library (ros_crtk_ndi_bridge
+      mts_ros_crtk_ndi_bridge.cpp
+      mts_ros_crtk_ndi_bridge.h)
 
     add_executable (ndi_tracker mainQt.cpp)
 
     # link against non cisst libraries and saw components
     target_link_libraries (ndi_tracker
-                           ${sawNDITracker_LIBRARIES}
-                           ${sawNDITrackerQt_LIBRARIES}
-			   ${catkin_LIBRARIES}
-                           )
+      ros_crtk_ndi_bridge
+      ${sawNDITracker_LIBRARIES}
+      ${sawNDITrackerQt_LIBRARIES}
+      ${catkin_LIBRARIES})
 
     # link against cisst libraries (and dependencies)
     cisst_target_link_libraries (ndi_tracker ${REQUIRED_CISST_LIBRARIES})
