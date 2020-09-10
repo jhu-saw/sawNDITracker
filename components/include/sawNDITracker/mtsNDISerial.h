@@ -50,6 +50,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstMultiTask/mtsTaskPeriodic.h>
 
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
+#include <cisstParameterTypes/prmPositionCartesianArrayGet.h>
 
 #include <sawNDITracker/sawNDITrackerConfig.h>
 #include <sawNDITracker/sawNDITrackerExport.h>  // always include last
@@ -71,8 +72,8 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
         double ErrorRMS;
 
         mtsInterfaceProvided * Interface;
-        prmPositionCartesianGet PositionLocal; // wrt camera
-        prmPositionCartesianGet Position; // wrt reference frame
+        prmPositionCartesianGet local_measured_cp; // wrt camera
+        prmPositionCartesianGet measured_cp; // wrt reference frame
         std::string ReferenceFrame;
         Tool * ReferenceTool;
 
@@ -231,8 +232,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
 
     bool mIsTracking;
     bool mTrackStrayMarkers;
-    mtsMatrix<double> mStrayMarkers;
-    std::vector<vct3> mMarkerPositionsLocal, mMarkerPositions;
+    prmPositionCartesianArrayGet local_measured_cp_array, measured_cp_array;
 
     double mReadTimeout;
     osaStopwatch mResponseTimer;

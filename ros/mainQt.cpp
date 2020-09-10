@@ -32,7 +32,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <sawNDITracker/mtsNDISerial.h>
 #include <sawNDITracker/mtsNDISerialControllerQtWidget.h>
 
-#include <cisst_ros_crtk/mts_ros_crtk_bridge.h>
+#include <mts_ros_crtk_ndi_bridge.h>
 
 #include <QApplication>
 #include <QMainWindow>
@@ -166,10 +166,14 @@ int main(int argc, char * argv[])
     positionQtWidgetFactory->Connect();
     tabWidget->addTab(positionQtWidgetFactory, "Tools");
 
-    // ROS CRTK bridge
-    mts_ros_crtk_bridge * crtk_bridge
-        = new mts_ros_crtk_bridge("ndi_serial_crtk_bridge", &rosNodeHandle);
-    crtk_bridge->add_factory_source(tracker->GetName(), "Controller", rosPeriod, tfPeriod);
+    // ROS CRTK bridge, using the derived class for NDi
+    mts_ros_crtk_ndi_bridge * crtk_bridge
+        = new mts_ros_crtk_ndi_bridge("ndi_serial_crtk_bridge", &rosNodeHandle);
+    crtk_bridge->bridge(tracker->GetName(), "Controller",
+                        "controller",
+                        rosPeriod, tfPeriod);
+    crtk_bridge->add_factory_source(tracker->GetName(), "Controller",
+                                    rosPeriod, tfPeriod);
     componentManager->AddComponent(crtk_bridge);
     crtk_bridge->Connect();
 
