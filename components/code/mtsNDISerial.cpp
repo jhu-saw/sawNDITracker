@@ -83,7 +83,7 @@ void mtsNDISerial::Init(void)
         mControllerInterface->AddCommandReadState(*mConfigurationStateTable, m_crtk_interfaces_provided, "crtk_interfaces_provided");
         mControllerInterface->AddCommandReadState(StateTable, mIsTracking, "IsTracking");
         mControllerInterface->AddCommandReadState(StateTable, mTrackStrayMarkers, "TrackStrayMarkers");
-        mControllerInterface->AddCommandReadState(StateTable, local_measured_cp_array, "local_measured_cp_array");
+        mControllerInterface->AddCommandReadState(StateTable, local_measured_cp_array, "local/measured_cp_array");
         mControllerInterface->AddCommandReadState(StateTable, measured_cp_array, "measured_cp_array");
         mControllerInterface->AddCommandReadState(StateTable, StateTable.PeriodStats,
                                                   "period_statistics");
