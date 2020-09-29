@@ -37,7 +37,6 @@ class mts_ros_crtk_ndi_bridge: public mts_ros_crtk_bridge
     /*! Everything needed to bridge the sawNDITracker component */
     void bridge(const std::string & _component_name,
                 const std::string & _interface_name,
-                const std::string & _ros_namespace,
                 const double _publish_period_in_seconds,
                 const double _tf_period_in_seconds);
 };

@@ -161,6 +161,7 @@ int main(int argc, char * argv[])
     // tool position widgets
     prmPositionCartesianGetQtWidgetFactory * positionQtWidgetFactory
         = new prmPositionCartesianGetQtWidgetFactory("positionQtWidgetFactory");
+    positionQtWidgetFactory->SetPrismaticRevoluteFactors(1.0 / cmn_mm, cmn180_PI); // to display values in mm and degrees
     positionQtWidgetFactory->AddFactorySource(tracker->GetName(), "Controller");
     componentManager->AddComponent(positionQtWidgetFactory);
     positionQtWidgetFactory->Connect();
@@ -170,7 +171,6 @@ int main(int argc, char * argv[])
     mts_ros_crtk_ndi_bridge * crtk_bridge
         = new mts_ros_crtk_ndi_bridge("ndi_serial_crtk_bridge", &rosNodeHandle);
     crtk_bridge->bridge(tracker->GetName(), "Controller",
-                        "controller",
                         rosPeriod, tfPeriod);
     crtk_bridge->add_factory_source(tracker->GetName(), "Controller",
                                     rosPeriod, tfPeriod);

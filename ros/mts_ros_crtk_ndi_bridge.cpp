@@ -21,16 +21,20 @@ http://www.cisst.org/cisst/license.txt.
 
 // cisst
 #include "mts_ros_crtk_ndi_bridge.h"
+#include <cisst_ros_bridge/mtsROSBridge.h>
 
 CMN_IMPLEMENT_SERVICES(mts_ros_crtk_ndi_bridge);
 
 
 void mts_ros_crtk_ndi_bridge::bridge(const std::string & _component_name,
                                      const std::string & _interface_name,
-                                     const std::string & _ros_namespace,
                                      const double _publish_period_in_seconds,
                                      const double _tf_period_in_seconds)
 {
+    // clean ROS namespace
+    std::string _clean_namespace = _component_name;
+    clean_namespace(_clean_namespace);
+
     // create factory to bridge tool as they get created
     this->add_factory_source(_component_name,
                              _interface_name,
@@ -40,24 +44,35 @@ void mts_ros_crtk_ndi_bridge::bridge(const std::string & _component_name,
     // controller specific topics, some might be CRTK compliant
     this->bridge_interface_provided(_component_name,
                                     _interface_name,
-                                    _ros_namespace,
+                                    _clean_namespace,
                                     _publish_period_in_seconds,
                                     _tf_period_in_seconds);
-    
-    /*
-    mROSBridge->AddSubscriberToCommandWrite<std::string, std_msgs::String>
-        ("Controller", "Connect", "connect");
-    mROSBridge->AddSubscriberToCommandVoid
-        ("Controller", "Disconnect", "disconnect");
-    mROSBridge->AddPublisherFromEventWrite<std::string, std_msgs::String>
-        ("Controller", "Connected", "connected");
+
+    // non CRTK topics
+    // add trailing / for clean namespace
+    if (!_clean_namespace.empty()) {
+        _clean_namespace.append("/");
+    }
+    // required interfaces specific to this component to bridge
+    const std::string _required_interface_name = _component_name + "_using_" + _interface_name;
+
+    m_subscribers_bridge->AddSubscriberToCommandWrite<std::string, std_msgs::String>
+        (_required_interface_name, "Connect", _clean_namespace + "connect");
+    m_subscribers_bridge->AddSubscriberToCommandVoid
+        (_required_interface_name, "Disconnect", _clean_namespace + "disconnect");
+    m_events_bridge->AddPublisherFromEventWrite<std::string, std_msgs::String>
+        (_required_interface_name, "Connected", _clean_namespace + "connected");
     // beep
-    mROSBridge->AddSubscriberToCommandWrite<int, std_msgs::Int32>
-        ("Controller", "Beep", "beep");
+    m_subscribers_bridge->AddSubscriberToCommandWrite<int, std_msgs::Int32>
+        (_required_interface_name, "Beep", _clean_namespace + "beep");
     // tracking
-    mROSBridge->AddSubscriberToCommandWrite<bool, std_msgs::Bool>
-        ("Controller", "ToggleTracking", "track");
-    mROSBridge->AddPublisherFromEventWrite<bool, std_msgs::Bool>
-        ("Controller", "Tracking", "tracking");
-    */
+    m_subscribers_bridge->AddSubscriberToCommandWrite<bool, std_msgs::Bool>
+        (_required_interface_name, "ToggleTracking", _clean_namespace + "track");
+    m_events_bridge->AddPublisherFromEventWrite<bool, std_msgs::Bool>
+        (_required_interface_name, "Tracking", _clean_namespace + "tracking");
+    // connections
+    m_connections.Add(m_subscribers_bridge->GetName(), _required_interface_name,
+                      _component_name, _interface_name);
+    m_connections.Add(m_events_bridge->GetName(), _required_interface_name,
+                      _component_name, _interface_name);
 }
