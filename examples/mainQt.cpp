@@ -2,7 +2,7 @@
 /* ex: set filetype=cpp softtabstop=4 shiftwidth=4 tabstop=4 cindent expandtab: */
 
 /*
-  Author(s):  Ali Uneri
+  Author(s):  Ali Uneri, Anton Deguet
   Created on: 2009-10-13
 
   (C) Copyright 2009-2020 Johns Hopkins University (JHU), All Rights Reserved.
@@ -93,9 +93,16 @@ int main(int argc, char * argv[])
 
     // create a Qt user interface
     QApplication application(argc, argv);
+    cmnQt::QApplicationExitsOnCtrlC();
+    if (options.IsSet("dark-mode")) {
+        cmnQt::SetDarkMode();
+    }
+
+    // organize all widgets in a tab widget
+    QTabWidget * tabWidget = new QTabWidget;
 
     // create the components
-    mtsNDISerial * tracker = new mtsNDISerial("NDI", 50.0 * cmn_ms);
+    mtsNDISerial * tracker = new mtsNDISerial("NDI", 10.0 * cmn_ms);
     if (port != "") {
         tracker->SetSerialPort(port);
     }
@@ -127,15 +134,6 @@ int main(int argc, char * argv[])
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
     componentManager->AddComponent(tracker);
 
-    // Qt settings
-    cmnQt::QApplicationExitsOnCtrlC();
-    if (options.IsSet("dark-mode")) {
-        cmnQt::SetDarkMode();
-    }
-
-    // organize all widgets in a tab widget
-    QTabWidget * tabWidget = new QTabWidget;
-
     // Qt widget
     mtsNDISerialControllerQtWidget * trackerWidget = new mtsNDISerialControllerQtWidget("NDI Widget");
     componentManager->AddComponent(trackerWidget);
@@ -146,6 +144,7 @@ int main(int argc, char * argv[])
     // tool position widgets
     prmPositionCartesianGetQtWidgetFactory * positionQtWidgetFactory
         = new prmPositionCartesianGetQtWidgetFactory("positionQtWidgetFactory");
+    positionQtWidgetFactory->SetPrismaticRevoluteFactors(1.0 / cmn_mm, cmn180_PI); // to display values in mm and degrees
     positionQtWidgetFactory->AddFactorySource(tracker->GetName(), "Controller");
     componentManager->AddComponent(positionQtWidgetFactory);
     positionQtWidgetFactory->Connect();
@@ -176,6 +175,9 @@ int main(int argc, char * argv[])
     // run Qt user interface
     tabWidget->show();
     application.exec();
+
+    // stop all logs
+    cmnLogger::Kill();
 
     // kill all components and perform cleanup
     componentManager->KillAllAndWait(5.0 * cmn_s);

@@ -155,7 +155,6 @@ int main(int argc, char * argv[])
     componentManager->AddComponent(trackerWidget);
     componentManager->Connect(trackerWidget->GetName(), "Controller",
                               tracker->GetName(), "Controller");
-
     tabWidget->addTab(trackerWidget, "Controller");
 
     // tool position widgets
