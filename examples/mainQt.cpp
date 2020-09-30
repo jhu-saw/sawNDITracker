@@ -151,21 +151,9 @@ int main(int argc, char * argv[])
     tabWidget->addTab(positionQtWidgetFactory, "Tools");
 
     // custom user component
-    const managerConfigType::iterator end = managerConfig.end();
-    for (managerConfigType::iterator iter = managerConfig.begin();
-         iter != end;
-         ++iter) {
-        if (!iter->empty()) {
-            if (!cmnPath::Exists(*iter)) {
-                CMN_LOG_INIT_ERROR << "File " << *iter
-                                   << " not found!" << std::endl;
-            } else {
-                if (!componentManager->ConfigureJSON(*iter)) {
-                    CMN_LOG_INIT_ERROR << "Configure: failed to configure component-manager" << std::endl;
-                    return -1;
-                }
-            }
-        }
+    if (!componentManager->ConfigureJSON(managerConfig)) {
+        CMN_LOG_INIT_ERROR << "Configure: failed to configure component-manager, check cisstLog for error messages" << std::endl;
+        return -1;
     }
 
     // create and start all components
