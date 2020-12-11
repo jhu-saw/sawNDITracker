@@ -46,7 +46,7 @@ void mtsNDISerial::Init(void)
     mTrackerName = "NDI";
     mReadTimeout = 5.0 * cmn_s;
     mIsTracking = false;
-    mTrackStrayMarkers = true;
+    mTrackStrayMarkers = false;
     mStrayMarkersReferenceTool = 0;
     memset(mSerialBuffer, 0, MAX_BUFFER_SIZE);
     mSerialBufferPointer = mSerialBuffer;
@@ -170,13 +170,12 @@ void mtsNDISerial::Configure(const std::string & filename)
     }
 
     // stray markers
+    mStrayMarkersReferenceFrame = mTrackerName;
     const Json::Value jsonStrayMarkers = jsonConfig["stray-markers"];
     if (!jsonStrayMarkers.empty()) {
         jsonValue = jsonStrayMarkers["reference"];
         if (!jsonValue.empty()) {
             mStrayMarkersReferenceFrame = jsonValue.asString();
-        } else {
-            mStrayMarkersReferenceFrame = mTrackerName;
         }
         jsonValue = jsonStrayMarkers["track"];
         if (!jsonValue.empty()) {
@@ -862,7 +861,7 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
         tool->Interface->AddCommandRead(&mtsStateTable::GetIndexReader, &StateTable, "GetTableIndex");
         // position wrt camera (raw position)
         StateTable.AddData(tool->local_measured_cp, name + "_local_measured_cp");
-        tool->Interface->AddCommandReadState(StateTable, tool->local_measured_cp, "local_measured_cp");
+        tool->Interface->AddCommandReadState(StateTable, tool->local_measured_cp, "local/measured_cp");
         tool->local_measured_cp.SetReferenceFrame(mTrackerName);
         tool->local_measured_cp.SetMovingFrame(name);
         // position wrt reference frame
@@ -1336,6 +1335,7 @@ void mtsNDISerial::Track(void)
                     * tool->local_measured_cp.Position();
             } else {
                 tool->measured_cp = tool->local_measured_cp;  // same
+                tool->measured_cp.SetValid(true);
             }
         } else {
             tool->measured_cp.SetValid(false);
@@ -1389,7 +1389,7 @@ void mtsNDISerial::Track(void)
             parsePointer += (3 * 7);
             markerVisibilities[i] = outOfVolumeReply[i + numGarbageBits];  // handle garbage bits in reply
 
-            std::cerr << marker << std::endl;
+            // std::cerr << marker << std::endl;
             // mStrayMarkers[i][0] = 1.0;  // if a marker is encountered
             // mStrayMarkers[i][1] = markerVisibilities[i];  // if marker is NOT out of volume
             // mStrayMarkers[i][2] = marker.X();
