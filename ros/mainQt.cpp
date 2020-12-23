@@ -29,6 +29,8 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisstMultiTask/mtsTaskManager.h>
 #include <cisstParameterTypes/prmPositionCartesianGetQtWidgetFactory.h>
+#include <cisstParameterTypes/prmPositionCartesianArrayGetQtWidget.h>
+
 #include <sawNDITracker/mtsNDISerial.h>
 #include <sawNDITracker/mtsNDISerialControllerQtWidget.h>
 
@@ -165,6 +167,15 @@ int main(int argc, char * argv[])
     componentManager->AddComponent(positionQtWidgetFactory);
     positionQtWidgetFactory->Connect();
     tabWidget->addTab(positionQtWidgetFactory, "Tools");
+
+    // stray markers
+    prmPositionCartesianArrayGetQtWidget * strayMarkersWidget;
+    strayMarkersWidget = new prmPositionCartesianArrayGetQtWidget("StrayMarkers-GUI");
+    strayMarkersWidget->Configure();
+    componentManager->AddComponent(strayMarkersWidget);
+    componentManager->Connect(strayMarkersWidget->GetName(), "Controller",
+                              tracker->GetName(), "Controller");
+    tabWidget->addTab(strayMarkersWidget, "Stray Markers");
 
     // ROS CRTK bridge, using the derived class for NDi
     mts_ros_crtk_ndi_bridge * crtk_bridge
