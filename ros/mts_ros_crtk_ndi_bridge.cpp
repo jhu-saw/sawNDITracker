@@ -67,9 +67,14 @@ void mts_ros_crtk_ndi_bridge::bridge(const std::string & _component_name,
         (_required_interface_name, "Beep", _clean_namespace + "beep");
     // tracking
     m_subscribers_bridge->AddSubscriberToCommandWrite<bool, std_msgs::Bool>
-        (_required_interface_name, "ToggleTracking", _clean_namespace + "track");
+        (_required_interface_name, "Track", _clean_namespace + "track");
     m_events_bridge->AddPublisherFromEventWrite<bool, std_msgs::Bool>
         (_required_interface_name, "Tracking", _clean_namespace + "tracking");
+    // stray markers
+    m_subscribers_bridge->AddSubscriberToCommandWrite<bool, std_msgs::Bool>
+        (_required_interface_name, "TrackStrayMarkers", _clean_namespace + "track_stray_markers");
+    m_events_bridge->AddPublisherFromEventWrite<bool, std_msgs::Bool>
+        (_required_interface_name, "TrackingStrayMarkers", _clean_namespace + "tracking_stray_markers");
     // connections
     m_connections.Add(m_subscribers_bridge->GetName(), _required_interface_name,
                       _component_name, _interface_name);

@@ -201,13 +201,14 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
                    const std::string & toolDefinitionFile = "",
                    const std::string & reference = "");
 
-    void ToggleTracking(const bool & track);
-    void ToggleStrayMarkers(const bool & stray);
+    void Track(const bool & track);
+    void TrackStrayMarkers(const bool & stray);
     void Track(void);
 
     struct {
         mtsFunctionWrite Connected;
         mtsFunctionWrite Tracking;
+        mtsFunctionWrite TrackingStrayMarkers;
         mtsFunctionVoid m_crtk_interfaces_provided_updated;
     } Events;
 
@@ -230,8 +231,8 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     std::string mStrayMarkersReferenceFrame;
     Tool * mStrayMarkersReferenceTool;
 
-    bool mIsTracking;
-    bool mTrackStrayMarkers;
+    bool mTracking;
+    bool mTrackingStrayMarkers;
     prmPositionCartesianArrayGet local_measured_cp_array, measured_cp_array;
 
     double mReadTimeout;

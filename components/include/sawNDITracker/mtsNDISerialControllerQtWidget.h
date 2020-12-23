@@ -68,6 +68,7 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
         mtsFunctionVoid  InitializeAll;
         mtsFunctionRead  Name;
         mtsFunctionWrite Track;
+        mtsFunctionWrite TrackStrayMarkers;
         mtsFunctionWrite Beep;
     } Tracker;
 
@@ -77,6 +78,7 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
     QPushButton * QPBInitializeAll;
     QLabel * QLPortName;
     QCheckBox * QCBTrack;
+    QCheckBox * QCBTrackStrayMarkers;
     QPushButton * QPBBeepButton;
     QSpinBox * QSBBeepCount;
 
@@ -93,6 +95,7 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
     void SlotConnect(bool);
     void SlotInitializeAll(void);
     void SlotTrack(bool);
+    void SlotTrackStrayMarkers(bool);
     void SlotBeep(void);
 
     void SlotConnectedEvent(void);
@@ -103,6 +106,7 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
  private:
     void ConnectedEventHandler(const std::string & connected);
     void TrackingEventHandler(const bool & tracking);
+    void TrackingStrayMarkersEventHandler(const bool & tracking);
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsNDISerialControllerQtWidget);

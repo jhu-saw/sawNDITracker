@@ -48,13 +48,16 @@ mtsNDISerialControllerQtWidget::mtsNDISerialControllerQtWidget(const std::string
         interfaceRequired->AddFunction("Connect", Tracker.Connect);
         interfaceRequired->AddFunction("Disconnect", Tracker.Disconnect);
         interfaceRequired->AddFunction("InitializeAll", Tracker.InitializeAll);
-        // ADV        interfaceRequired->AddFunction("Name", Tracker.Name);
-        interfaceRequired->AddFunction("ToggleTracking", Tracker.Track);
+        interfaceRequired->AddFunction("Name", Tracker.Name);
+        interfaceRequired->AddFunction("Track", Tracker.Track);
+        interfaceRequired->AddFunction("TrackStrayMarkers", Tracker.TrackStrayMarkers);
         interfaceRequired->AddFunction("Beep", Tracker.Beep);
         interfaceRequired->AddEventHandlerWrite(&mtsNDISerialControllerQtWidget::ConnectedEventHandler,
                                                 this, "Connected");
         interfaceRequired->AddEventHandlerWrite(&mtsNDISerialControllerQtWidget::TrackingEventHandler,
                                                 this, "Tracking");
+        interfaceRequired->AddEventHandlerWrite(&mtsNDISerialControllerQtWidget::TrackingStrayMarkersEventHandler,
+                                                this, "TrackingStrayMarkers");
     }
     setupUi();
     startTimer(TimerPeriodInMilliseconds); // ms
@@ -68,6 +71,11 @@ void mtsNDISerialControllerQtWidget::Configure(const std::string & CMN_UNUSED(fi
 void mtsNDISerialControllerQtWidget::Startup(void)
 {
     CMN_LOG_CLASS_INIT_VERBOSE << "Startup" << std::endl;
+
+    std::string name;
+    Tracker.Name(name);
+    QCoreApplication::setApplicationName(name.c_str());
+
     if (!parent()) {
         show();
     }
@@ -143,6 +151,15 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
             this, SLOT(SlotTrack(bool)));
     row++;
 
+    // track stray markers
+    gridLayout->addWidget(new QLabel("Stray markers"), row, 0);
+    QCBTrackStrayMarkers = new QCheckBox;
+    QCBTrackStrayMarkers->setChecked(false);
+    gridLayout->addWidget(QCBTrackStrayMarkers, row, 1);
+    connect(QCBTrackStrayMarkers, SIGNAL(toggled(bool)),
+            this, SLOT(SlotTrackStrayMarkers(bool)));
+    row++;
+
     // (re)initialize all
     QPBInitializeAll = new QPushButton("(Re)initialize");
     gridLayout->addWidget(QPBInitializeAll, row, 0);
@@ -177,7 +194,6 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
     systemLayout->addWidget(QMMessage);
 
     setLayout(mainLayout);
-    setWindowTitle("sawNDITracker");
     resize(sizeHint());
 
     // connect slots/signal for cisst events
@@ -195,6 +211,7 @@ void mtsNDISerialControllerQtWidget::SetControlWidgetsEnabled(const bool enabled
     // enable/disable other buttons
     QPBInitializeAll->setEnabled(enabled);
     QCBTrack->setEnabled(enabled);
+    QCBTrackStrayMarkers->setEnabled(enabled);
     QPBBeepButton->setEnabled(enabled);
     QSBBeepCount->setEnabled(enabled);
 }
@@ -218,6 +235,11 @@ void mtsNDISerialControllerQtWidget::SlotInitializeAll(void)
 void mtsNDISerialControllerQtWidget::SlotTrack(bool track)
 {
     Tracker.Track(track);
+}
+
+void mtsNDISerialControllerQtWidget::SlotTrackStrayMarkers(bool track)
+{
+    Tracker.TrackStrayMarkers(track);
 }
 
 void mtsNDISerialControllerQtWidget::SlotBeep(void)
@@ -247,4 +269,11 @@ void mtsNDISerialControllerQtWidget::TrackingEventHandler(const bool & tracking)
     const bool oldState = QCBTrack->blockSignals(true);
     QCBTrack->setChecked(tracking);
     QCBTrack->blockSignals(oldState);
+}
+
+void mtsNDISerialControllerQtWidget::TrackingStrayMarkersEventHandler(const bool & tracking)
+{
+    const bool oldState = QCBTrackStrayMarkers->blockSignals(true);
+    QCBTrackStrayMarkers->setChecked(tracking);
+    QCBTrackStrayMarkers->blockSignals(oldState);
 }
