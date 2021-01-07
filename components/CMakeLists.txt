@@ -16,7 +16,6 @@ cmake_minimum_required (VERSION 2.8)
 
 # create a list of required cisst libraries
 set (REQUIRED_CISST_LIBRARIES cisstCommon
-                              cisstCommonXML
                               cisstVector
                               cisstOSAbstraction
                               cisstMultiTask

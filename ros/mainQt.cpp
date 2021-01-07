@@ -50,7 +50,7 @@ int main(int argc, char * argv[])
     cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
     // create ROS node handle
-    ros::init(argc, argv, "dvrk", ros::init_options::AnonymousName);
+    ros::init(argc, argv, "saw_ndi_tracker", ros::init_options::AnonymousName);
     ros::NodeHandle rosNodeHandle;
 
     // parse options
