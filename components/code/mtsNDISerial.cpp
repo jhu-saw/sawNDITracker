@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2020 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2021 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -272,8 +272,8 @@ void mtsNDISerial::Startup(void)
 {
     if (mSerialPort.IsOpened()) {
         Events.Connected(mSerialPortName);
-        Events.m_crtk_interfaces_provided_updated();
     }
+    Events.m_crtk_interfaces_provided_updated();
 }
 
 void mtsNDISerial::Connect(const std::string & serialPortName)
