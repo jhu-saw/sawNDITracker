@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014-2017 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -20,9 +20,6 @@ http://www.cisst.org/cisst/license.txt.
 #define _mtsNDISerialControllerQtWidget_h
 
 #include <cisstMultiTask/mtsComponent.h>
-
-#include <cisstParameterTypes/prmPositionCartesianGet.h>
-#include <cisstParameterTypes/prmPositionCartesianGetQtWidget.h>
 
 #include <cisstMultiTask/mtsIntervalStatisticsQtWidget.h>
 #include <cisstMultiTask/mtsMessageQtWidget.h>
@@ -65,13 +62,13 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
     std::string mSerialPort;
 
     struct {
-        mtsFunctionRead  GetPeriodStatistics;
+        mtsFunctionRead  period_statistics;
         mtsFunctionWrite Connect;
         mtsFunctionVoid  Disconnect;
         mtsFunctionVoid  InitializeAll;
         mtsFunctionRead  Name;
-        mtsFunctionRead  ToolNames;
         mtsFunctionWrite Track;
+        mtsFunctionWrite TrackStrayMarkers;
         mtsFunctionWrite Beep;
     } Tracker;
 
@@ -81,9 +78,9 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
     QPushButton * QPBInitializeAll;
     QLabel * QLPortName;
     QCheckBox * QCBTrack;
+    QCheckBox * QCBTrackStrayMarkers;
     QPushButton * QPBBeepButton;
     QSpinBox * QSBBeepCount;
-    QGridLayout * QGTools;
 
     // Timing
     mtsIntervalStatistics IntervalStatistics;
@@ -94,33 +91,22 @@ class CISST_EXPORT mtsNDISerialControllerQtWidget: public QWidget, public mtsCom
 
     void SetControlWidgetsEnabled(const bool enabled);
 
-    struct Tool {
-        prmPositionCartesianGetQtWidget * Widget;
-        mtsInterfaceRequired * Interface;
-        mtsFunctionRead GetPositionCartesian;
-        prmPositionCartesianGet Position;
-    };
-
-    typedef cmnNamedMap<Tool> ToolMap;
-    ToolMap Tools;
-
  private slots:
     void SlotConnect(bool);
     void SlotInitializeAll(void);
     void SlotTrack(bool);
+    void SlotTrackStrayMarkers(bool);
     void SlotBeep(void);
 
     void SlotConnectedEvent(void);
-    void SlotUpdatedToolsEvent(void);
 
  signals:
     void SignalConnectedEvent(void);
-    void SignalUpdatedToolsEvent(void);
 
  private:
     void ConnectedEventHandler(const std::string & connected);
     void TrackingEventHandler(const bool & tracking);
-    void UpdatedToolsEventHandler(void);
+    void TrackingStrayMarkersEventHandler(const bool & tracking);
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsNDISerialControllerQtWidget);

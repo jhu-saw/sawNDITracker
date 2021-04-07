@@ -16,7 +16,16 @@ If needed, one can also add OpenIGTLink support using sawOpenIGTLink (contact th
  * cisst libraries: https://github.com/jhu-cisst/cisst
  * Qt for user interface
  * ROS (optional)
- 
+
+# Build
+
+You can find some documentation re. compiling cisst and SAW components in the [dVRK wiki](https://github.com/jhu-dvrk/sawIntuitiveResearchKit/wiki/CatkinBuild#catkin-build-and-rosinstall)(best source if you're using Linux with ROS) and the [cisst wiki](https://github.com/jhu-cisst/cisst/wiki/Compiling-cisst-and-SAW-with-CMake)(more details and provides instructions for Windows as well).
+
+For Linux with ROS, we provide a rosinstall file to retrieve all the git repositories you need for sawNDITracker:
+```
+wstool merge https://raw.githubusercontent.com/jhu-saw/sawNDITracker/devel/ros/ndi_tracker.rosinstall
+```
+
 # Running the examples
  
 ## Linux permissions

@@ -2,10 +2,10 @@
 /* ex: set filetype=cpp softtabstop=4 shiftwidth=4 tabstop=4 cindent expandtab: */
 
 /*
-  Author(s):  Ali Uneri
+  Author(s):  Ali Uneri, Anton Deguet
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2017 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -25,8 +25,11 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstCommon/cmnPath.h>
 #include <cisstCommon/cmnUnits.h>
 #include <cisstCommon/cmnCommandLineOptions.h>
+#include <cisstCommon/cmnQt.h>
 
 #include <cisstMultiTask/mtsTaskManager.h>
+#include <cisstParameterTypes/prmPositionCartesianGetQtWidgetFactory.h>
+#include <cisstParameterTypes/prmPositionCartesianArrayGetQtWidget.h>
 
 #include <sawNDITracker/mtsNDISerial.h>
 #include <sawNDITracker/mtsNDISerialControllerQtWidget.h>
@@ -37,6 +40,13 @@ http://www.cisst.org/cisst/license.txt.
 
 int main(int argc, char * argv[])
 {
+    // log configuration
+    cmnLogger::SetMask(CMN_LOG_ALLOW_ALL);
+    cmnLogger::SetMaskDefaultLog(CMN_LOG_ALLOW_ALL);
+    cmnLogger::SetMaskFunction(CMN_LOG_ALLOW_ALL);
+    cmnLogger::SetMaskClassMatching("mtsNDISerial*", CMN_LOG_ALLOW_ALL);
+    cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
+
     // parse options
     cmnCommandLineOptions options;
     std::string port;
@@ -52,6 +62,15 @@ int main(int argc, char * argv[])
 
     options.AddOptionNoValue("l", "log-serial",
                              "log all serial port read/writes in cisstLog.txt");
+
+    options.AddOptionNoValue("D", "dark-mode",
+                             "replaces the default Qt palette with darker colors");
+
+    typedef std::list<std::string> managerConfigType;
+    managerConfigType managerConfig;
+    options.AddOptionMultipleValues("m", "component-manager",
+                                    "JSON file to configure component manager",
+                                    cmnCommandLineOptions::OPTIONAL_OPTION, &managerConfig);
 
     // check that all required options have been provided
     std::string errorMessage;
@@ -76,9 +95,16 @@ int main(int argc, char * argv[])
 
     // create a Qt user interface
     QApplication application(argc, argv);
+    cmnQt::QApplicationExitsOnCtrlC();
+    if (options.IsSet("dark-mode")) {
+        cmnQt::SetDarkMode();
+    }
+
+    // organize all widgets in a tab widget
+    QTabWidget * tabWidget = new QTabWidget;
 
     // create the components
-    mtsNDISerial * tracker = new mtsNDISerial("NDI", 50.0 * cmn_ms);
+    mtsNDISerial * tracker = new mtsNDISerial("NDI", 10.0 * cmn_ms);
     if (port != "") {
         tracker->SetSerialPort(port);
     }
@@ -115,19 +141,42 @@ int main(int argc, char * argv[])
     componentManager->AddComponent(trackerWidget);
     componentManager->Connect(trackerWidget->GetName(), "Controller",
                               tracker->GetName(), "Controller");
+    tabWidget->addTab(trackerWidget, "Controller");
+
+    // tool position widgets
+    prmPositionCartesianGetQtWidgetFactory * positionQtWidgetFactory
+        = new prmPositionCartesianGetQtWidgetFactory("positionQtWidgetFactory");
+    positionQtWidgetFactory->SetPrismaticRevoluteFactors(1.0 / cmn_mm, cmn180_PI); // to display values in mm and degrees
+    positionQtWidgetFactory->AddFactorySource(tracker->GetName(), "Controller");
+    componentManager->AddComponent(positionQtWidgetFactory);
+    positionQtWidgetFactory->Connect();
+    tabWidget->addTab(positionQtWidgetFactory, "Tools");
+
+    // stray markers
+    prmPositionCartesianArrayGetQtWidget * strayMarkersWidget;
+    strayMarkersWidget = new prmPositionCartesianArrayGetQtWidget("StrayMarkers-GUI");
+    strayMarkersWidget->Configure();
+    componentManager->AddComponent(strayMarkersWidget);
+    componentManager->Connect(strayMarkersWidget->GetName(), "Controller",
+                              tracker->GetName(), "Controller");
+    tabWidget->addTab(strayMarkersWidget, "Stray Markers");
+
+    // custom user component
+    if (!componentManager->ConfigureJSON(managerConfig)) {
+        CMN_LOG_INIT_ERROR << "Configure: failed to configure component-manager, check cisstLog for error messages" << std::endl;
+        return -1;
+    }
 
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);
     componentManager->StartAllAndWait(5.0 * cmn_s);
 
-    // create a main window to hold QWidgets
-    QMainWindow * mainWindow = new QMainWindow();
-    mainWindow->setCentralWidget(trackerWidget);
-    mainWindow->setWindowTitle("sawNDITracker");
-    mainWindow->show();
-
     // run Qt user interface
+    tabWidget->show();
     application.exec();
+
+    // stop all logs
+    cmnLogger::Kill();
 
     // kill all components and perform cleanup
     componentManager->KillAllAndWait(5.0 * cmn_s);

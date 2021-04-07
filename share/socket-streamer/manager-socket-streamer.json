@@ -1,0 +1,30 @@
+/* -*- Mode: Javascript; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
+{
+    "components":
+    [
+        {
+            "shared-library": "sawSocketStreamer",
+            "class-name": "mtsSocketStreamer",
+            "constructor-arg": {
+                "Name": "streamerBase",
+                "Period": 0.01
+            },
+            "configure-parameter": "streamerBase.json"
+        }
+    ]
+    ,
+    "connections":
+    [
+        {
+            "required": {
+                "component": "streamerBase",
+                "interface": "Required"
+            }
+            ,
+            "provided": {
+                "component": "NDI",
+                "interface": "Base"
+            }
+        }
+    ]
+}

@@ -11,6 +11,13 @@
     // as the source directory with suffix "share/roms" at the tail.
     "definition-path": ["/a_directory", "/another_directory"],
 
+    "name": "Polaris",
+
+    // "stray-markers": {
+    //     "track": true,
+    //     "reference": "Base"
+    // }
+    // ,
     // list of tools to be tracked
     "tools": [
         {
@@ -18,13 +25,28 @@
             "name": "Base",
             "unique-id": "01-3288C807-8700223"
         }
-        ,
-        {
-            // passive tool, must be defined after Base since it uses Base as reference frame
-            "name": "Pointer",
-            "unique-id": "02-3B115800-960556",
-            "definition": "medtronic-PN960556.rom", // this is a passive tool, the definition has to be provided
-            "reference" : "Base"
-        }
+        // ,
+        // {
+        //     // passive tool, must be defined after Base since it uses Base as reference frame
+        //     "name": "Pointer",
+        //     "unique-id": "04-3BC3D800-1",
+        //     "definition": "LCSR-optical-tracker-body.rom" // this is a passive tool, the definition has to be provided
+        //     // "reference" : "Base"
+        // }
+        // ,
+        // {
+        //     // passive tool, must be defined after Base since it uses Base as reference frame
+        //     "name": "Pointer2",
+        //     "unique-id": "04-3BC800-1",
+        //     "definition": "8700339.rom" // this is a passive tool, the definition has to be provided
+        //     // "reference" : "Base"
+        // }
+        // ,
+        // {
+        //     // active tool
+        //     "name": "Tool",
+        //     "unique-id": "02-3091280C-TT001",
+        //     "reference": "Base"
+        // }
     ]
 }

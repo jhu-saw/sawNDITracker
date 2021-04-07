@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2018 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2021 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -43,11 +43,11 @@ inline bool Glob(const std::string & pattern, std::vector<std::string> & paths) 
 
 void mtsNDISerial::Init(void)
 {
+    mTrackerName = "NDI";
     mReadTimeout = 5.0 * cmn_s;
-    mIsTracking = false;
-    mTrackStrayMarkers = true;
-    mStrayMarkers.SetSize(50, 5);
-    mStrayMarkers.Zeros();
+    mTracking = false;
+    mTrackingStrayMarkers = false;
+    mStrayMarkersReferenceTool = 0;
     memset(mSerialBuffer, 0, MAX_BUFFER_SIZE);
     mSerialBufferPointer = mSerialBuffer;
 
@@ -60,12 +60,12 @@ void mtsNDISerial::Init(void)
     this->AddStateTable(mConfigurationStateTable);
     mConfigurationStateTable->AddData(this->Name, "TrackerName");
     mConfigurationStateTable->AddData(mSerialPortName, "SerialPort");
-    mConfigurationStateTable->AddData(mToolNames, "ToolNames");
+    mConfigurationStateTable->AddData(m_crtk_interfaces_provided, "crtk_interfaces_provided");
 
-    StateTable.AddData(mIsTracking, "IsTracking");
-    StateTable.AddData(mTrackStrayMarkers, "TrackStrayMarkers");
-    StateTable.AddData(mMarkerPositions, "MarkerPositions");
-    StateTable.AddData(mStrayMarkers, "StrayMarkers");
+    StateTable.AddData(mTracking, "Tracking");
+    StateTable.AddData(mTrackingStrayMarkers, "TrackingStrayMarkers");
+    StateTable.AddData(local_measured_cp_array, "local_measured_cp_array");
+    StateTable.AddData(measured_cp_array, "measured_cp_array");
 
     mControllerInterface = AddInterfaceProvided("Controller");
     if (mControllerInterface) {
@@ -77,19 +77,21 @@ void mtsNDISerial::Init(void)
         mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesInitialize, this, "PortHandlesInitialize");
         mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesQuery, this, "PortHandlesQuery");
         mControllerInterface->AddCommandVoid(&mtsNDISerial::PortHandlesEnable, this, "PortHandlesEnable");
-        mControllerInterface->AddCommandWrite(&mtsNDISerial::ToggleTracking, this, "ToggleTracking");
+        mControllerInterface->AddCommandWrite(&mtsNDISerial::Track, this, "Track");
+        mControllerInterface->AddCommandWrite(&mtsNDISerial::TrackStrayMarkers, this, "TrackStrayMarkers");
         mControllerInterface->AddCommandReadState(*mConfigurationStateTable, this->Name, "Name");
         mControllerInterface->AddCommandReadState(*mConfigurationStateTable, mSerialPortName, "SerialPort");
-        mControllerInterface->AddCommandReadState(*mConfigurationStateTable, mToolNames, "ToolNames");
-        mControllerInterface->AddCommandReadState(StateTable, mIsTracking, "IsTracking");
-        mControllerInterface->AddCommandReadState(StateTable, mTrackStrayMarkers, "TrackStrayMarkers");
-        mControllerInterface->AddCommandReadState(StateTable, mMarkerPositions, "MarkerPositions");
-        mControllerInterface->AddCommandReadState(StateTable, mStrayMarkers, "StrayMarkers");
+        mControllerInterface->AddCommandReadState(*mConfigurationStateTable, m_crtk_interfaces_provided, "crtk_interfaces_provided");
+        mControllerInterface->AddCommandReadState(StateTable, mTracking, "IsTracking");
+        mControllerInterface->AddCommandReadState(StateTable, mTrackingStrayMarkers, "TrackStrayMarkers");
+        mControllerInterface->AddCommandReadState(StateTable, local_measured_cp_array, "local/measured_cp_array");
+        mControllerInterface->AddCommandReadState(StateTable, measured_cp_array, "measured_cp_array");
         mControllerInterface->AddCommandReadState(StateTable, StateTable.PeriodStats,
-                                                  "GetPeriodStatistics");
+                                                  "period_statistics");
         mControllerInterface->AddEventWrite(Events.Connected, "Connected", std::string(""));
         mControllerInterface->AddEventWrite(Events.Tracking, "Tracking", false);
-        mControllerInterface->AddEventVoid(Events.UpdatedTools, "UpdatedTools");
+        mControllerInterface->AddEventWrite(Events.TrackingStrayMarkers, "TrackingStrayMarkers", false);
+        mControllerInterface->AddEventVoid(Events.m_crtk_interfaces_provided_updated, "crtk_interfaces_provided_updated");
     }
 
     mConfigurationStateTable->Start();
@@ -132,6 +134,13 @@ void mtsNDISerial::Configure(const std::string & filename)
 
 
     // start looking for configuration parameters
+    // name used for the tracking device, i.e. reference frame by default
+    // if not specified, "NDI"
+    jsonValue = jsonConfig["name"];
+    if (!jsonValue.empty()) {
+        mTrackerName = jsonValue.asString();
+    }
+
     jsonValue = jsonConfig["serial-port"];
     // if the port is specified in the json file
     if (!jsonValue.empty()) {
@@ -162,15 +171,36 @@ void mtsNDISerial::Configure(const std::string & filename)
         }
     }
 
+    // stray markers
+    mStrayMarkersReferenceFrame = mTrackerName;
+    const Json::Value jsonStrayMarkers = jsonConfig["stray-markers"];
+    if (!jsonStrayMarkers.empty()) {
+        jsonValue = jsonStrayMarkers["reference"];
+        if (!jsonValue.empty()) {
+            mStrayMarkersReferenceFrame = jsonValue.asString();
+        }
+        jsonValue = jsonStrayMarkers["track"];
+        if (!jsonValue.empty()) {
+            mTrackingStrayMarkers = jsonValue.asBool();
+        }
+    }
+
     // get tools defined by user
     const Json::Value jsonTools = jsonConfig["tools"];
     for (unsigned int index = 0; index < jsonTools.size(); ++index) {
         std::string name, uniqueID, definition, reference;
+        // tools
         const Json::Value jsonTool = jsonTools[index];
         // --- name
         jsonValue = jsonTool["name"];
         if (!jsonValue.empty()) {
             name = jsonValue.asString();
+            if (name == mTrackerName) {
+                CMN_LOG_CLASS_INIT_ERROR << "Configure: tools["
+                                         << index << "] can't use the name \"" << name
+                                         << "\" since it matches the tracker name.  You can either rename the tool or the tracker itself using \"name\" at the top level" << std::endl;
+                return;
+            }
         } else {
             CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to find \"name\" for tools["
                                      << index << "]" << std::endl;
@@ -213,12 +243,37 @@ void mtsNDISerial::Configure(const std::string & filename)
         if (!jsonValue.empty()) {
             reference = jsonValue.asString();
         } else {
+            // default reference based on tracker name
+            reference = mTrackerName;
             CMN_LOG_CLASS_INIT_VERBOSE << "Configure: no reference frame \"for\" for tools["
-                                     << index << "].  Position will be reported wrt Camera frame" << std::endl;
+                                     << index << "].  Position will be reported wrt NDI device frame or global reference frame" << std::endl;
         }
 
         AddTool(name, uniqueID, definition, reference);
     }
+
+    // make sure the reference frame has been added if mReferenceFrame is set
+    if (mStrayMarkersReferenceFrame != mTrackerName) {
+        mStrayMarkersReferenceTool = mTools.GetItem(mStrayMarkersReferenceFrame, CMN_LOG_LEVEL_INIT_ERROR);
+        if (!mStrayMarkersReferenceTool) {
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: can't find reference \"" << mStrayMarkersReferenceFrame
+                                     << "\".  Make sure reference frame/tool exists!" << std::endl;
+            mStrayMarkersReferenceFrame = mTrackerName;
+        }
+    }
+
+    // try to connect after configuring if serial port is defined
+    if (mSerialPortName != "") {
+        Connect(mSerialPortName);
+    }
+}
+
+void mtsNDISerial::Startup(void)
+{
+    if (mSerialPort.IsOpened()) {
+        Events.Connected(mSerialPortName);
+    }
+    Events.m_crtk_interfaces_provided_updated();
 }
 
 void mtsNDISerial::Connect(const std::string & serialPortName)
@@ -355,8 +410,8 @@ void mtsNDISerial::Initialize(void)
 void mtsNDISerial::InitializeAll(void)
 {
     // save tracking mode
-    bool wasTracking = mIsTracking;
-    ToggleTracking(false);
+    bool wasTracking = mTracking;
+    Track(false);
 
     Initialize();
     PortHandlesInitialize();
@@ -365,15 +420,15 @@ void mtsNDISerial::InitializeAll(void)
     PortHandlesEnable();
 
     // restore tracking mode
-    ToggleTracking(wasTracking);
+    Track(wasTracking);
 }
 
 void mtsNDISerial::Disconnect(void)
 {
     // just in case we were tracking
-    ToggleTracking(false);
+    Track(false);
     // if we can't properly stop tracking, still set the flag
-    mIsTracking = false;
+    mTracking = false;
     // close serial port
     mSerialPort.Close();
     // send event
@@ -384,7 +439,7 @@ void mtsNDISerial::Disconnect(void)
 void mtsNDISerial::Run(void)
 {
     ProcessQueuedCommands();
-    if (mIsTracking) {
+    if (mTracking) {
         Track();
     }
 }
@@ -392,7 +447,7 @@ void mtsNDISerial::Run(void)
 
 void mtsNDISerial::Cleanup(void)
 {
-    ToggleTracking(false);
+    Track(false);
     if (!mSerialPort.Close()) {
         CMN_LOG_CLASS_INIT_ERROR << "Cleanup: failed to close serial port" << std::endl;
     }
@@ -789,6 +844,9 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
     tool->UniqueID = uniqueID;
     tool->Definition = toolDefinitionFile;
     tool->ReferenceFrame = reference;
+    if (tool->ReferenceFrame == "") {
+        tool->ReferenceFrame = mTrackerName;
+    }
 
     if (!mTools.AddItem(tool->Name, tool, CMN_LOG_LEVEL_INIT_ERROR)) {
         CMN_LOG_CLASS_INIT_ERROR << "AddTool: no tool created, duplicate name exists: "
@@ -804,35 +862,35 @@ mtsNDISerial::Tool * mtsNDISerial::AddTool(const std::string & name,
     if (tool->Interface) {
         tool->Interface->AddCommandRead(&mtsStateTable::GetIndexReader, &StateTable, "GetTableIndex");
         // position wrt camera (raw position)
-        StateTable.AddData(tool->PositionLocal, name + "PositionLocal");
-        tool->Interface->AddCommandReadState(StateTable, tool->PositionLocal, "GetPositionCartesianLocal");
-        tool->PositionLocal.SetMovingFrame(name);
-        tool->PositionLocal.SetReferenceFrame("Camera");
+        StateTable.AddData(tool->local_measured_cp, name + "_local_measured_cp");
+        tool->Interface->AddCommandReadState(StateTable, tool->local_measured_cp, "local/measured_cp");
+        tool->local_measured_cp.SetReferenceFrame(mTrackerName);
+        tool->local_measured_cp.SetMovingFrame(name);
         // position wrt reference frame
-        StateTable.AddData(tool->Position, name + "Position");
-        tool->Interface->AddCommandReadState(StateTable, tool->Position, "GetPositionCartesian");
-        tool->Position.SetMovingFrame(name);
-        if (tool->ReferenceFrame != "") {
+        StateTable.AddData(tool->measured_cp, name + "_measured_cp");
+        tool->Interface->AddCommandReadState(StateTable, tool->measured_cp, "measured_cp");
+        tool->measured_cp.SetMovingFrame(name);
+        if (tool->ReferenceFrame != mTrackerName) {
             tool->ReferenceTool = mTools.GetItem(tool->ReferenceFrame, CMN_LOG_LEVEL_INIT_ERROR);
             if (!tool->ReferenceTool) {
                 CMN_LOG_CLASS_INIT_ERROR << "AddTool: can't find reference \"" << tool->ReferenceFrame
                                          << "\" for tool \"" << name
                                          << "\".  Make sure reference frames/tools are create before"
                                          << std::endl;
-                tool->Position.SetReferenceFrame("undefined");
+                tool->measured_cp.SetReferenceFrame(mTrackerName);
             } else {
-                tool->Position.SetReferenceFrame(tool->ReferenceFrame);
+                tool->measured_cp.SetReferenceFrame(tool->ReferenceFrame);
             }
         } else {
-            tool->Position.SetReferenceFrame("Camera");
+            tool->measured_cp.SetReferenceFrame(mTrackerName);
         }
     }
 
     // update list of existing tools
     mConfigurationStateTable->Start(); {
-        mToolNames = mTools.GetNames();
+        m_crtk_interfaces_provided.push_back(mtsDescriptionInterfaceFullName("localhost", this->Name, name));
     } mConfigurationStateTable->Advance();
-    Events.UpdatedTools();
+    Events.m_crtk_interfaces_provided_updated();
 
     return tool;
 }
@@ -1080,8 +1138,12 @@ void mtsNDISerial::PortHandlesEnable(void)
             CommandAppend("D");  // dynamic
         } else if (tool->MainType == std::string("0A")) {  // C-arm tracker
             CommandAppend("D");  // dynamic
+        } else if (tool->MainType == std::string("0B")) {  // ?? 6 DOF cable tool for Aurora
+            CommandAppend("D");  // dynamic
         } else {
-            CMN_LOG_CLASS_RUN_ERROR << "PortHandlesEnable: unknown tool of main type: " << tool->MainType << std::endl;
+            mControllerInterface->SendError(this->GetName()
+                                            + ": PortHandlesEnable: unknown tool of main type: "
+                                            + tool->MainType);
             return;
         }
         CommandSend();
@@ -1129,10 +1191,10 @@ void mtsNDISerial::PortHandlesPassiveTools(void)
 }
 
 
-void mtsNDISerial::ToggleTracking(const bool & track)
+void mtsNDISerial::Track(const bool & track)
 {
     // detect change
-    if (track == mIsTracking) {
+    if (track == mTracking) {
         return;
     }
 
@@ -1141,8 +1203,9 @@ void mtsNDISerial::ToggleTracking(const bool & track)
         // start tracking
         CommandSend("TSTART 80");
         if (ResponseRead("OKAY")) {
-            mIsTracking = true;
+            mTracking = true;
             Events.Tracking(true);
+            Events.TrackingStrayMarkers(mTrackingStrayMarkers);
             mControllerInterface->SendStatus(this->GetName() + ": tracking is on");
         } else {
             mControllerInterface->SendError(this->GetName() + ": failed to turn tracking on");
@@ -1154,14 +1217,15 @@ void mtsNDISerial::ToggleTracking(const bool & track)
         for (toolIterator = mTools.begin();
              toolIterator != end;
              ++toolIterator) {
-            toolIterator->second->PositionLocal.SetValid(false);
-            toolIterator->second->Position.SetValid(false);
+            toolIterator->second->local_measured_cp.SetValid(false);
+            toolIterator->second->measured_cp.SetValid(false);
         }
         // stop tracking
         CommandSend("TSTOP ");
         if (ResponseRead("OKAY")) {
-            mIsTracking = false;
+            mTracking = false;
             Events.Tracking(false);
+            Events.TrackingStrayMarkers(mTrackingStrayMarkers);
             mControllerInterface->SendStatus(this->GetName() + ": tracking is off");
         } else {
             mControllerInterface->SendError(this->GetName() + ": failed to turn tracking off");
@@ -1170,9 +1234,10 @@ void mtsNDISerial::ToggleTracking(const bool & track)
     Sleep(0.5 * cmn_s);
 }
 
-void mtsNDISerial::ToggleStrayMarkers(const bool & stray)
+void mtsNDISerial::TrackStrayMarkers(const bool & stray)
 {
-    mTrackStrayMarkers = stray;
+    mTrackingStrayMarkers = stray;
+    Events.TrackingStrayMarkers(mTrackingStrayMarkers);
 }
 
 void mtsNDISerial::Track(void)
@@ -1188,7 +1253,7 @@ void mtsNDISerial::Track(void)
     vct3 toolPosition;
     vctFrm3 tooltipPosition;
 
-    if (!mTrackStrayMarkers) {
+    if (!mTrackingStrayMarkers) {
         CommandSend("TX 0801");
     } else {
         CommandSend("TX 1801");
@@ -1206,26 +1271,26 @@ void mtsNDISerial::Track(void)
         if (!tool) {
             CMN_LOG_CLASS_RUN_ERROR << "Track: no tool for port handle: " << toolKey << std::endl;
             mControllerInterface->SendError(this->GetName() + ": parsing TX result failed, missing tool for port handle");
-            ToggleTracking(false);
+            Track(false);
             return;
         }
 
         if (strncmp(parsePointer, "MISSING", 7) == 0) {
             CMN_LOG_CLASS_RUN_VERBOSE << "Track: " << tool->Name << " is missing" << std::endl;
-            tool->PositionLocal.SetValid(false);
-            tool->Position.SetValid(false);
+            tool->local_measured_cp.SetValid(false);
+            tool->measured_cp.SetValid(false);
             parsePointer += 7;  // skip string MISSING
             parsePointer += 8;  // skip Port Status
         } else if (strncmp(parsePointer, "DISABLED", 8) == 0) {
             CMN_LOG_CLASS_RUN_VERBOSE << "Track: " << tool->Name << " is disabled" << std::endl;
-            tool->PositionLocal.SetValid(false);
-            tool->Position.SetValid(false);
+            tool->local_measured_cp.SetValid(false);
+            tool->measured_cp.SetValid(false);
             parsePointer += 8;  // skip string DISABLED
             parsePointer += 8;  // skip Port Status
         } else if (strncmp(parsePointer, "UNOCCUPIED", 10) == 0) {
             CMN_LOG_CLASS_RUN_VERBOSE << "Track: " << tool->Name << " is unoccupied" << std::endl;
-            tool->PositionLocal.SetValid(false);
-            tool->Position.SetValid(false);
+            tool->local_measured_cp.SetValid(false);
+            tool->measured_cp.SetValid(false);
             parsePointer += 10; // skip string UNOCCUPIED
             parsePointer += 8;  // skip Port Status
         } else {
@@ -1245,8 +1310,8 @@ void mtsNDISerial::Track(void)
             toolPosition.Multiply(cmn_mm); // convert to whatever cisst is using internally
             tooltipPosition.Translation() = toolPosition;
             tool->ErrorRMS /= 10000.0; // implicit format -x.xxxx
-            tool->PositionLocal.Position() = tooltipPosition;
-            tool->PositionLocal.SetValid(true);
+            tool->local_measured_cp.Position() = tooltipPosition;
+            tool->local_measured_cp.SetValid(true);
         }
         sscanf(parsePointer, "%08X", &(tool->FrameNumber));
         parsePointer += 8;
@@ -1254,7 +1319,7 @@ void mtsNDISerial::Track(void)
         if (*parsePointer != '\n') {
             CMN_LOG_CLASS_RUN_ERROR << "Track: line feed expected, received: " << *parsePointer << std::endl;
             mControllerInterface->SendError(this->GetName() + ": parsing TX result failed, expected line feed");
-            ToggleTracking(false);
+            Track(false);
             return;
         }
         parsePointer += 1;  // skip line feed (LF)
@@ -1267,21 +1332,22 @@ void mtsNDISerial::Track(void)
          toolIterator != end;
          ++toolIterator) {
         Tool * tool = toolIterator->second;
-        if (tool->PositionLocal.Valid()) {
+        if (tool->local_measured_cp.Valid()) {
             if (tool->ReferenceTool) {
                 // set as valid and change reference frame
-                tool->Position.SetValid(tool->ReferenceTool->Position.Valid());
-                tool->Position.Position() = tool->ReferenceTool->Position.Position().Inverse()
-                    * tool->PositionLocal.Position();
+                tool->measured_cp.SetValid(tool->ReferenceTool->measured_cp.Valid());
+                tool->measured_cp.Position() = tool->ReferenceTool->measured_cp.Position().Inverse()
+                    * tool->local_measured_cp.Position();
             } else {
-                tool->Position = tool->PositionLocal;  // same
+                tool->measured_cp = tool->local_measured_cp;  // same
+                tool->measured_cp.SetValid(true);
             }
         } else {
-            tool->Position.SetValid(false);
+            tool->measured_cp.SetValid(false);
         }
     }
 
-    if (mTrackStrayMarkers) {
+    if (mTrackingStrayMarkers) {
         // read number of stray markers
         sscanf(parsePointer, "%02X", &numMarkers);
         parsePointer += 2;
@@ -1299,23 +1365,54 @@ void mtsNDISerial::Track(void)
         }
         parsePointer += outOfVolumeReplySize;
 
-        // read marker positions
-        mMarkerPositions.resize(numMarkers);
+        // read marker positions, local are always valid
+        local_measured_cp_array.Positions().resize(numMarkers);
+        local_measured_cp_array.SetValid(true);
+
+        bool strayMarkersReferenceValid = false;
+        // we expect a reference frame for the stray markers
+        if (mStrayMarkersReferenceTool) {
+            if (mStrayMarkersReferenceTool->measured_cp.Valid()) {
+                strayMarkersReferenceValid = true;
+                measured_cp_array.Positions().resize(numMarkers);
+            } else {
+                measured_cp_array.SetValid(false);
+                measured_cp_array.Positions().resize(0);
+            }
+        } else {
+            // local and non local are the same
+            measured_cp_array.Positions().resize(numMarkers);
+            measured_cp_array.SetValid(true);
+        }
+
+        // update all
         std::vector<bool> markerVisibilities(numMarkers);
-        mStrayMarkers.Zeros();
         for (unsigned int i = 0; i < numMarkers; i++) {
+            vct3 marker;
             sscanf(parsePointer, "%7lf%7lf%7lf",
-                   &(mMarkerPositions[i].X()), &(mMarkerPositions[i].Y()), &(mMarkerPositions[i].Z()));
+                   &(marker.X()), &(marker.Y()), &(marker.Z()));
+            marker.Divide(100.0);  // handle the implied decimal point
+            marker.Multiply(cmn_mm); // convert to whatever cisst is using internally
+            local_measured_cp_array.Positions().at(i).Translation() = marker;
+            // apply reference frame if needed and valid
+            if (mStrayMarkersReferenceTool) {
+                if (strayMarkersReferenceValid) {
+                    measured_cp_array.Positions().at(i).Translation() =
+                        mStrayMarkersReferenceTool->measured_cp.Position().Inverse() * marker;
+                }
+            } else {
+                // local and non local are the same
+                measured_cp_array.Positions().at(i).Translation() = marker;
+            }
             parsePointer += (3 * 7);
-            mMarkerPositions[i].Divide(100.0);  // handle the implied decimal point
-            mMarkerPositions[i].Multiply(cmn_mm); // convert to whatever cisst is using internally
             markerVisibilities[i] = outOfVolumeReply[i + numGarbageBits];  // handle garbage bits in reply
 
-            mStrayMarkers[i][0] = 1.0;  // if a marker is encountered
-            mStrayMarkers[i][1] = markerVisibilities[i];  // if marker is NOT out of volume
-            mStrayMarkers[i][2] = mMarkerPositions[i].X();
-            mStrayMarkers[i][3] = mMarkerPositions[i].Y();
-            mStrayMarkers[i][4] = mMarkerPositions[i].Z();
+            // std::cerr << marker << std::endl;
+            // mStrayMarkers[i][0] = 1.0;  // if a marker is encountered
+            // mStrayMarkers[i][1] = markerVisibilities[i];  // if marker is NOT out of volume
+            // mStrayMarkers[i][2] = marker.X();
+            // mStrayMarkers[i][3] = marker.Y();
+            // mStrayMarkers[i][4] = marker.Z();
         }
     }
 

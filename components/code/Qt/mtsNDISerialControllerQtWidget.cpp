@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014-2017 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -44,20 +44,20 @@ mtsNDISerialControllerQtWidget::mtsNDISerialControllerQtWidget(const std::string
     mtsInterfaceRequired * interfaceRequired = AddInterfaceRequired("Controller");
     if (interfaceRequired) {
         QMMessage->SetInterfaceRequired(interfaceRequired);
-        interfaceRequired->AddFunction("GetPeriodStatistics", Tracker.GetPeriodStatistics);
+        interfaceRequired->AddFunction("period_statistics", Tracker.period_statistics);
         interfaceRequired->AddFunction("Connect", Tracker.Connect);
         interfaceRequired->AddFunction("Disconnect", Tracker.Disconnect);
         interfaceRequired->AddFunction("InitializeAll", Tracker.InitializeAll);
-        // ADV        interfaceRequired->AddFunction("Name", Tracker.Name);
-        interfaceRequired->AddFunction("ToolNames", Tracker.ToolNames);
-        interfaceRequired->AddFunction("ToggleTracking", Tracker.Track);
+        interfaceRequired->AddFunction("Name", Tracker.Name);
+        interfaceRequired->AddFunction("Track", Tracker.Track);
+        interfaceRequired->AddFunction("TrackStrayMarkers", Tracker.TrackStrayMarkers);
         interfaceRequired->AddFunction("Beep", Tracker.Beep);
         interfaceRequired->AddEventHandlerWrite(&mtsNDISerialControllerQtWidget::ConnectedEventHandler,
                                                 this, "Connected");
         interfaceRequired->AddEventHandlerWrite(&mtsNDISerialControllerQtWidget::TrackingEventHandler,
                                                 this, "Tracking");
-        interfaceRequired->AddEventHandlerVoid(&mtsNDISerialControllerQtWidget::UpdatedToolsEventHandler,
-                                               this, "UpdatedTools");
+        interfaceRequired->AddEventHandlerWrite(&mtsNDISerialControllerQtWidget::TrackingStrayMarkersEventHandler,
+                                                this, "TrackingStrayMarkers");
     }
     setupUi();
     startTimer(TimerPeriodInMilliseconds); // ms
@@ -71,6 +71,11 @@ void mtsNDISerialControllerQtWidget::Configure(const std::string & CMN_UNUSED(fi
 void mtsNDISerialControllerQtWidget::Startup(void)
 {
     CMN_LOG_CLASS_INIT_VERBOSE << "Startup" << std::endl;
+
+    std::string name;
+    Tracker.Name(name);
+    QCoreApplication::setApplicationName(name.c_str());
+
     if (!parent()) {
         show();
     }
@@ -102,20 +107,8 @@ void mtsNDISerialControllerQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(event))
         return;
     }
 
-    mtsExecutionResult executionResult;
-
-    Tracker.GetPeriodStatistics(IntervalStatistics);
+    Tracker.period_statistics(IntervalStatistics);
     QMIntervalStatistics->SetValue(IntervalStatistics);
-
-    const ToolMap::iterator end = Tools.end();
-    ToolMap::iterator toolIter;
-    for (toolIter = Tools.begin();
-         toolIter != end;
-         ++toolIter) {
-        Tool * tool = toolIter->second;
-        tool->GetPositionCartesian(tool->Position);
-        tool->Widget->SetValue(tool->Position);
-    }
 }
 
 void mtsNDISerialControllerQtWidget::setupUi(void)
@@ -158,6 +151,15 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
             this, SLOT(SlotTrack(bool)));
     row++;
 
+    // track stray markers
+    gridLayout->addWidget(new QLabel("Stray markers"), row, 0);
+    QCBTrackStrayMarkers = new QCheckBox;
+    QCBTrackStrayMarkers->setChecked(false);
+    gridLayout->addWidget(QCBTrackStrayMarkers, row, 1);
+    connect(QCBTrackStrayMarkers, SIGNAL(toggled(bool)),
+            this, SLOT(SlotTrackStrayMarkers(bool)));
+    row++;
+
     // (re)initialize all
     QPBInitializeAll = new QPushButton("(Re)initialize");
     gridLayout->addWidget(QPBInitializeAll, row, 0);
@@ -191,19 +193,12 @@ void mtsNDISerialControllerQtWidget::setupUi(void)
     QMMessage->setupUi();
     systemLayout->addWidget(QMMessage);
 
-    // Tools in a tab
-    QGTools = new QGridLayout();
-    mainLayout->addLayout(QGTools);
-
     setLayout(mainLayout);
-    setWindowTitle("sawNDITracker");
     resize(sizeHint());
 
     // connect slots/signal for cisst events
     connect(this, SIGNAL(SignalConnectedEvent()),
             this, SLOT(SlotConnectedEvent()));
-    connect(this, SIGNAL(SignalUpdatedToolsEvent()),
-            this, SLOT(SlotUpdatedToolsEvent()));
 
     // by default assumes the system is not connected
     SetControlWidgetsEnabled(false);
@@ -216,6 +211,7 @@ void mtsNDISerialControllerQtWidget::SetControlWidgetsEnabled(const bool enabled
     // enable/disable other buttons
     QPBInitializeAll->setEnabled(enabled);
     QCBTrack->setEnabled(enabled);
+    QCBTrackStrayMarkers->setEnabled(enabled);
     QPBBeepButton->setEnabled(enabled);
     QSBBeepCount->setEnabled(enabled);
 }
@@ -241,6 +237,11 @@ void mtsNDISerialControllerQtWidget::SlotTrack(bool track)
     Tracker.Track(track);
 }
 
+void mtsNDISerialControllerQtWidget::SlotTrackStrayMarkers(bool track)
+{
+    Tracker.TrackStrayMarkers(track);
+}
+
 void mtsNDISerialControllerQtWidget::SlotBeep(void)
 {
     Tracker.Beep(QSBBeepCount->value());
@@ -260,8 +261,6 @@ void mtsNDISerialControllerQtWidget::SlotConnectedEvent(void)
     } else {
         SetControlWidgetsEnabled(true);
         QLPortName->setText(mSerialPort.c_str());
-        // some tools might have been added before connect so update now
-        SlotUpdatedToolsEvent();
     }
 }
 
@@ -272,44 +271,9 @@ void mtsNDISerialControllerQtWidget::TrackingEventHandler(const bool & tracking)
     QCBTrack->blockSignals(oldState);
 }
 
-void mtsNDISerialControllerQtWidget::UpdatedToolsEventHandler(void)
+void mtsNDISerialControllerQtWidget::TrackingStrayMarkersEventHandler(const bool & tracking)
 {
-    emit SignalUpdatedToolsEvent();
-}
-
-void mtsNDISerialControllerQtWidget::SlotUpdatedToolsEvent(void)
-{
-    std::string trackerName = "NDI";
-        // ADV Tracker.Name(trackerName);
-
-    std::vector<std::string> toolNames;
-    Tracker.ToolNames(toolNames);
-
-    for (size_t i = 0; i < toolNames.size(); ++i) {
-        std::string name = toolNames[i];
-        Tool * tool;
-        tool = Tools.GetItem(name);
-        // if it's not found, it is new
-        if (!tool) {
-            tool = new Tool;
-            // cisst interface
-            tool->Interface = this->AddInterfaceRequired(name);
-            tool->Interface->AddFunction("GetPositionCartesian", tool->GetPositionCartesian);
-            mtsComponentManager * manager = mtsComponentManager::GetInstance();
-            manager->Connect(trackerName, name,
-                             this->GetName(), name);
-            // Qt widget added to grid
-            const int NB_COLS = 2;
-            int position = static_cast<int>(Tools.size());
-            int row = position / NB_COLS;
-            int col = position % NB_COLS;
-            tool->Widget = new prmPositionCartesianGetQtWidget();
-            // busy wait until this is connected to retrieve moving/reference frames
-            while (!tool->GetPositionCartesian(tool->Position)) {
-                osaSleep(100.0 * cmn_ms);
-            }
-            QGTools->addWidget(tool->Widget, row, col);
-            Tools.AddItem(name, tool);
-        }
-    }
+    const bool oldState = QCBTrackStrayMarkers->blockSignals(true);
+    QCBTrackStrayMarkers->setChecked(tracking);
+    QCBTrackStrayMarkers->blockSignals(oldState);
 }

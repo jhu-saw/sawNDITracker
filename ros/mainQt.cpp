@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2017-12-04
 
-  (C) Copyright 2017 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2017-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -28,13 +28,13 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstCommon/cmnQt.h>
 
 #include <cisstMultiTask/mtsTaskManager.h>
+#include <cisstParameterTypes/prmPositionCartesianGetQtWidgetFactory.h>
+#include <cisstParameterTypes/prmPositionCartesianArrayGetQtWidget.h>
 
 #include <sawNDITracker/mtsNDISerial.h>
 #include <sawNDITracker/mtsNDISerialControllerQtWidget.h>
 
-#include "mtsNDISerialROS.h"
-#include <ros/ros.h>
-#include <cisst_ros_bridge/mtsROSBridge.h>
+#include <mts_ros_crtk_ndi_bridge.h>
 
 #include <QApplication>
 #include <QMainWindow>
@@ -42,11 +42,21 @@ http://www.cisst.org/cisst/license.txt.
 
 int main(int argc, char * argv[])
 {
+    // log configuration
+    cmnLogger::SetMask(CMN_LOG_ALLOW_ALL);
+    cmnLogger::SetMaskDefaultLog(CMN_LOG_ALLOW_ALL);
+    cmnLogger::SetMaskFunction(CMN_LOG_ALLOW_ALL);
+    cmnLogger::SetMaskClassMatching("mtsNDISerial*", CMN_LOG_ALLOW_ALL);
+    cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
+
+    // create ROS node handle
+    ros::init(argc, argv, "saw_ndi_tracker", ros::init_options::AnonymousName);
+    ros::NodeHandle rosNodeHandle;
+
     // parse options
     cmnCommandLineOptions options;
     std::string port;
     std::string configFile;
-    std::string rosNamespace = "/ndi";
     double rosPeriod = 20.0 * cmn_ms;
     double tfPeriod = 20.0 * cmn_ms;
 
@@ -61,10 +71,6 @@ int main(int argc, char * argv[])
     options.AddOptionNoValue("l", "log-serial",
                              "log all serial port read/writes in cisstLog.txt");
 
-    options.AddOptionOneValue("n", "ros-namespace",
-                              "ROS namespace to prefix all topics, must have start and end \"/\" (default /ndi/)",
-                              cmnCommandLineOptions::OPTIONAL_OPTION, &rosNamespace);
-
     options.AddOptionOneValue("p", "ros-period",
                               "period in seconds to read all components and publish (default 0.02, 20 ms, 50Hz).  There is no point to have a period higher than the tracker's period",
                               cmnCommandLineOptions::OPTIONAL_OPTION, &rosPeriod);
@@ -73,6 +79,14 @@ int main(int argc, char * argv[])
                               "period in seconds to read all components and broadcast tf2 (default 0.02, 20 ms, 50Hz).  There is no point to have a period higher than the tracker's period",
                               cmnCommandLineOptions::OPTIONAL_OPTION, &tfPeriod);
 
+    options.AddOptionNoValue("D", "dark-mode",
+                             "replaces the default Qt palette with darker colors");
+
+    typedef std::list<std::string> managerConfigType;
+    managerConfigType managerConfig;
+    options.AddOptionMultipleValues("m", "component-manager",
+                                    "JSON file to configure component manager",
+                                    cmnCommandLineOptions::OPTIONAL_OPTION, &managerConfig);
 
     // check that all required options have been provided
     std::string errorMessage;
@@ -98,6 +112,12 @@ int main(int argc, char * argv[])
     // create a Qt user interface
     QApplication application(argc, argv);
     cmnQt::QApplicationExitsOnCtrlC();
+    if (options.IsSet("dark-mode")) {
+        cmnQt::SetDarkMode();
+    }
+
+    // organize all widgets in a tab widget
+    QTabWidget * tabWidget = new QTabWidget;
 
     // create the components
     mtsNDISerial * tracker = new mtsNDISerial("NDI", 10.0 * cmn_ms);
@@ -137,39 +157,55 @@ int main(int argc, char * argv[])
     componentManager->AddComponent(trackerWidget);
     componentManager->Connect(trackerWidget->GetName(), "Controller",
                               tracker->GetName(), "Controller");
+    tabWidget->addTab(trackerWidget, "Controller");
 
-    // ROS topics
-    // ros wrapper for arms and optionally IOs
-    std::string bridgeName = "sawNDITracker_" + rosNamespace;
-    bridgeName = ros::names::clean(bridgeName);
-    std::replace(bridgeName.begin(), bridgeName.end(), '/', '_');
-    std::replace(bridgeName.begin(), bridgeName.end(), '-', '_');
-    std::replace(bridgeName.begin(), bridgeName.end(), '.', '_');
-    mtsROSBridge rosBridge(bridgeName, rosPeriod, true, false); // spin, don't catch sigint
-    componentManager->AddComponent(&rosBridge);
+    // tool position widgets
+    prmPositionCartesianGetQtWidgetFactory * positionQtWidgetFactory
+        = new prmPositionCartesianGetQtWidgetFactory("positionQtWidgetFactory");
+    positionQtWidgetFactory->SetPrismaticRevoluteFactors(1.0 / cmn_mm, cmn180_PI); // to display values in mm and degrees
+    positionQtWidgetFactory->AddFactorySource(tracker->GetName(), "Controller");
+    componentManager->AddComponent(positionQtWidgetFactory);
+    positionQtWidgetFactory->Connect();
+    tabWidget->addTab(positionQtWidgetFactory, "Tools");
 
-    mtsROSBridge tfBridge(bridgeName + "_tf2", tfPeriod, true, false); // spin, don't catch sigint
-    componentManager->AddComponent(&tfBridge);
-
-    mtsNDISerialROS * trackerROS = new mtsNDISerialROS("NDI ROS");
-    componentManager->AddComponent(trackerROS);
-    trackerROS->AddROSTopics(rosBridge.GetName(), tfBridge.GetName(),
-                             tracker->GetName(), rosNamespace);
-    componentManager->Connect(trackerROS->GetName(), "Controller",
+    // stray markers
+    prmPositionCartesianArrayGetQtWidget * strayMarkersWidget;
+    strayMarkersWidget = new prmPositionCartesianArrayGetQtWidget("StrayMarkers-GUI");
+    strayMarkersWidget->Configure();
+    componentManager->AddComponent(strayMarkersWidget);
+    componentManager->Connect(strayMarkersWidget->GetName(), "Controller",
                               tracker->GetName(), "Controller");
+    tabWidget->addTab(strayMarkersWidget, "Stray Markers");
+
+    // ROS CRTK bridge, using the derived class for NDi
+    mts_ros_crtk_ndi_bridge * crtk_bridge
+        = new mts_ros_crtk_ndi_bridge("ndi_serial_crtk_bridge", &rosNodeHandle);
+    crtk_bridge->bridge(tracker->GetName(), "Controller",
+                        rosPeriod, tfPeriod);
+    crtk_bridge->add_factory_source(tracker->GetName(), "Controller",
+                                    rosPeriod, tfPeriod);
+    componentManager->AddComponent(crtk_bridge);
+    crtk_bridge->Connect();
+
+    // custom user component
+    if (!componentManager->ConfigureJSON(managerConfig)) {
+        CMN_LOG_INIT_ERROR << "Configure: failed to configure component-manager, check cisstLog for error messages" << std::endl;
+        return -1;
+    }
 
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);
     componentManager->StartAllAndWait(5.0 * cmn_s);
 
-    // create a main window to hold QWidgets
-    QMainWindow * mainWindow = new QMainWindow();
-    mainWindow->setCentralWidget(trackerWidget);
-    mainWindow->setWindowTitle("sawNDITracker");
-    mainWindow->show();
-
     // run Qt user interface
+    tabWidget->show();
     application.exec();
+
+    // stop all logs
+    cmnLogger::Kill();
+
+    // stop ROS node
+    ros::shutdown();
 
     // kill all components and perform cleanup
     componentManager->KillAllAndWait(5.0 * cmn_s);

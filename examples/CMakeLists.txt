@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2009-2017 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2009-2020 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -18,7 +18,8 @@ set (REQUIRED_CISST_LIBRARIES cisstCommon
                               cisstNumerical
                               cisstOSAbstraction
                               cisstMultiTask
-                              cisstParameterTypes)
+                              cisstParameterTypes
+                              cisstParameterTypesQt)
 
 # find cisst and make sure the required libraries have been compiled
 find_package (cisst 1.0.9 COMPONENTS ${REQUIRED_CISST_LIBRARIES})

@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2018 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -23,8 +23,6 @@ http://www.cisst.org/cisst/license.txt.
   \warning Missing support for 14400bps, 921600bps and 1228739bps baud rates in osaSerialPort.
 
   \todo Consider deriving from mtsTaskContinuous using an "adaptive" sleep.
-  \todo Verify the need for existing sleep times.
-  \todo Enable individual tools on-the-fly (dynamically add their interfaces and Qt Widget).
   \todo Move CalibratePivot to cisstNumerical?
   \todo Error handling for partial and concatenated messages in ResponseRead()
   \todo Handle other main types of tools (besides pointer, reference, etc.).
@@ -35,8 +33,6 @@ http://www.cisst.org/cisst/license.txt.
   \todo Check for buffer overflow in CommandAppend.
   \todo Support for the extra features of newer Polaris versions.
   \todo Pretty print for SerialNumber, to extract date, etc..
-  \todo Create one state table per tool
-  \todo Use frame number to decide if timestamp should be refreshed (not needed if one state table per tool)
   \todo Use a map to convert Tool's MainType to human readable text.
   \todo Strategies for error recovery, send an event with a human readable payload, implement in CheckResponse.
 */
@@ -54,6 +50,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstMultiTask/mtsTaskPeriodic.h>
 
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
+#include <cisstParameterTypes/prmPositionCartesianArrayGet.h>
 
 #include <sawNDITracker/sawNDITrackerConfig.h>
 #include <sawNDITracker/sawNDITrackerExport.h>  // always include last
@@ -75,8 +72,8 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
         double ErrorRMS;
 
         mtsInterfaceProvided * Interface;
-        prmPositionCartesianGet PositionLocal; // wrt camera
-        prmPositionCartesianGet Position; // wrt reference frame
+        prmPositionCartesianGet local_measured_cp; // wrt camera
+        prmPositionCartesianGet measured_cp; // wrt reference frame
         std::string ReferenceFrame;
         Tool * ReferenceTool;
 
@@ -122,7 +119,7 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
       Port search and rom loading will happen when first
       connected. */
     void Configure(const std::string & filename = "");
-    inline void Startup(void) {};
+    inline void Startup(void);
     void Run(void);
     void Cleanup(void);
 
@@ -204,19 +201,21 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
                    const std::string & toolDefinitionFile = "",
                    const std::string & reference = "");
 
-    void ToggleTracking(const bool & track);
-    void ToggleStrayMarkers(const bool & stray);
+    void Track(const bool & track);
+    void TrackStrayMarkers(const bool & stray);
     void Track(void);
 
     struct {
         mtsFunctionWrite Connected;
         mtsFunctionWrite Tracking;
-        mtsFunctionVoid UpdatedTools;
+        mtsFunctionWrite TrackingStrayMarkers;
+        mtsFunctionVoid m_crtk_interfaces_provided_updated;
     } Events;
 
     mtsStateTable * mConfigurationStateTable;
     mtsInterfaceProvided * mControllerInterface;
 
+    std::string mTrackerName;
     std::string mSerialPortName;
     osaSerialPort mSerialPort;
     char mSerialBuffer[MAX_BUFFER_SIZE];
@@ -227,12 +226,14 @@ class CISST_EXPORT mtsNDISerial : public mtsTaskPeriodic
     typedef cmnNamedMap<Tool> ToolsType;
     ToolsType mTools;
     cmnNamedMap<Tool> mPortToTool;
-    std::vector<std::string> mToolNames;
+    std::vector<mtsDescriptionInterfaceFullName> m_crtk_interfaces_provided;
 
-    bool mIsTracking;
-    bool mTrackStrayMarkers;
-    mtsMatrix<double> mStrayMarkers;
-    std::vector<vct3> mMarkerPositions;
+    std::string mStrayMarkersReferenceFrame;
+    Tool * mStrayMarkersReferenceTool;
+
+    bool mTracking;
+    bool mTrackingStrayMarkers;
+    prmPositionCartesianArrayGet local_measured_cp_array, measured_cp_array;
 
     double mReadTimeout;
     osaStopwatch mResponseTimer;
