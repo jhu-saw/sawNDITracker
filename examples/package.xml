@@ -1,6 +1,6 @@
 <package>
   <name>saw_ndi_tracker_examples</name>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
   <description>sawNDITracker examples</description>
   <maintainer email="anton.deguet@jhu.edu">Anton Deguet</maintainer>
   <license>cisst</license>

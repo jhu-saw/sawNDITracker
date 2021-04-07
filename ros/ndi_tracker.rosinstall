@@ -5,16 +5,16 @@
 - git:
     local-name: cisst-saw/cisst
     uri: https://github.com/jhu-cisst/cisst
-    version: devel
+    version: 1.1.0
 - git:
     local-name: cisst-saw/cisst-ros
     uri: https://github.com/jhu-cisst/cisst-ros
-    version: devel
+    version: 2.0.0
 - git:
     local-name: crtk/crtk_msgs
     uri: https://github.com/collaborative-robotics/crtk_msgs
-    version: master   
+    version: 1.0.0
 - git:
     local-name: cisst-saw/sawNDITracker
     uri: https://github.com/jhu-saw/sawNDITracker
-    version: devel
+    version: 1.1.0

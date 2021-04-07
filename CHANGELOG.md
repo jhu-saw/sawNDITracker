@@ -1,6 +1,24 @@
 Change log
 ==========
 
+1.1.0 (2021-04-08)
+==================
+
+* API changes:
+  * Use CRTK naming convention for command and ROS topic names
+* Deprecated features:
+  * None
+* New features:
+  * New Qt widget to visualize stray marker positions
+  * New ROS topics, dynamically create ROS publishers for new tools
+  * Support ROS namespace option `__ns:=`
+  * ROS topic to publish stray markers
+  * `.rosinstall` file for `wstool`
+  * Command line option to log serial port communication
+  * Dark mode using `-D`
+* Bug fixes:
+  * Likely some...
+
 1.0.0 (2018-05-16)
 ==================
 
