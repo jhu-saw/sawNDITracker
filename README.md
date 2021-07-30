@@ -4,7 +4,7 @@ This SAW component contains code for interfacing with many NDI tracking devices 
   * Linux and Windows
   * NDI Polaris (old generation), Spectra, Vicra and Aurora
 
-:warning: This code supports older devices with serial ports and will likely also work with USB devices.  It will not work with Ethernet based devices (e.g. Polaris Vega).
+:warning: This code supports devices with serial port and will likely also work with USB devices.  It will not work with Ethernet based devices (e.g. Polaris Vega).
 
 The `ros` folder contains code for a ROS node that interfaces with the sawNDITracker component and publishes the 3D transformations of each tracked tool as well as a point cloud for all stray markers.  It also broadcasts transformations for `tf2`.  To build the ROS node, make sure you use `catkin build`.
 
