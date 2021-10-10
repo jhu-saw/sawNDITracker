@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2014-2017 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2014-2021 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -41,11 +41,18 @@ if (cisst_FOUND_AS_REQUIRED)
                ${sawNDITracker_HEADER_DIR}/mtsNDISerialControllerQtWidget.h
                mtsNDISerialControllerQtWidget.cpp
                ${sawNDITracker_QT_WRAP_CPP})
-  set_property (TARGET sawNDITrackerQt PROPERTY FOLDER "sawNDITracker")
+  set_target_properties (sawNDITrackerQt PROPERTIES
+                         VERSION ${sawNDITracker_VERSION}
+                         FOLDER "sawNDITracker")
   cisst_target_link_libraries (sawNDITrackerQt ${REQUIRED_CISST_LIBRARIES})
 
   # make sure the new library is known by the parent folder to add to the config file
   set (sawNDITrackerQt_LIBRARIES sawNDITrackerQt PARENT_SCOPE)
+
+  install (TARGETS sawNDITrackerQt COMPONENT sawNDITracker-Qt
+           RUNTIME DESTINATION bin
+           LIBRARY DESTINATION lib
+           ARCHIVE DESTINATION lib)
 
 else (cisst_FOUND_AS_REQUIRED)
   message ("Information: code will not be compiled, it requires ${REQUIRED_CISST_LIBRARIES}")
