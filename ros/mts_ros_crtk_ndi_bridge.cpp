@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2017-11-28
 
-  (C) Copyright 2017-2020 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2017-2021 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -33,7 +33,7 @@ void mts_ros_crtk_ndi_bridge::bridge(const std::string & _component_name,
 {
     // clean ROS namespace
     std::string _clean_namespace = _component_name;
-    clean_namespace(_clean_namespace);
+    mts_ros_crtk::clean_namespace(_clean_namespace);
 
     // create factory to bridge tool as they get created
     this->add_factory_source(_component_name,
