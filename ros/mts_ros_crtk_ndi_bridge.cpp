@@ -22,6 +22,7 @@ http://www.cisst.org/cisst/license.txt.
 // cisst
 #include "mts_ros_crtk_ndi_bridge.h"
 #include <cisst_ros_bridge/mtsROSBridge.h>
+#include <cisst_ros_crtk/mts_ros_crtk_bridge.h>
 
 CMN_IMPLEMENT_SERVICES(mts_ros_crtk_ndi_bridge);
 
@@ -33,7 +34,7 @@ void mts_ros_crtk_ndi_bridge::bridge(const std::string & _component_name,
 {
     // clean ROS namespace
     std::string _clean_namespace = _component_name;
-    mts_ros_crtk::clean_namespace(_clean_namespace);
+    cisst_ros_crtk::clean_namespace(_clean_namespace);
 
     // create factory to bridge tool as they get created
     this->add_factory_source(_component_name,
