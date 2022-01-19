@@ -31,34 +31,27 @@ if (cisst_FOUND_AS_REQUIRED)
   include (${CISST_USE_FILE})
 
   # catkin/ROS paths
-  cisst_is_catkin_build (sawNDITracker_IS_CATKIN_BUILT)
-  if (sawNDITracker_IS_CATKIN_BUILT)
-    set (sawNDITracker_CONFIG_FILE_DIR
-         "${CATKIN_DEVEL_PREFIX}/share/sawNDITracker/cmake")
-    set (EXECUTABLE_OUTPUT_PATH "${CATKIN_DEVEL_PREFIX}/bin")
-    set (LIBRARY_OUTPUT_PATH    "${CATKIN_DEVEL_PREFIX}/lib")
-  else ()
-    if (NOT LIBRARY_OUTPUT_PATH)
-      set (EXECUTABLE_OUTPUT_PATH "${CMAKE_CURRENT_BINARY_DIR}/bin")
-      set (LIBRARY_OUTPUT_PATH "${CMAKE_CURRENT_BINARY_DIR}/lib")
-    endif (NOT LIBRARY_OUTPUT_PATH)
-    set (sawNDITracker_CONFIG_FILE_DIR "${sawNDITracker_BINARY_DIR}")
-  endif ()
+  cisst_set_output_path ()
 
   # create/configure file for find_package (sawNDITracker)
   set (sawNDITracker_INCLUDE_DIR
        "${sawNDITracker_SOURCE_DIR}/include"
        "${sawNDITracker_BINARY_DIR}/include")
+  set (sawNDITracker_HEADER_DIR "${sawNDITracker_SOURCE_DIR}/include/sawNDITracker")
   set (sawNDITracker_LIBRARY_DIR "${LIBRARY_OUTPUT_PATH}")
   set (sawNDITracker_LIBRARIES sawNDITracker)
-  set (sawNDITrackerQt_LIBRARIES sawNDITrackerQt)
 
-  # Generate sawNDITrackerRevision.h
-  configure_file ("${sawNDITracker_SOURCE_DIR}/code/sawNDITrackerRevision.h.in"
-                  "${sawNDITracker_BINARY_DIR}/include/sawNDITracker/sawNDITrackerRevision.h")
-
+  # Allow c++ code to find local header files
   include_directories (${sawNDITracker_INCLUDE_DIR} ${sawNDITracker_BINARY_DIR})
-  set (sawNDITracker_HEADER_DIR "${sawNDITracker_SOURCE_DIR}/include/sawNDITracker")
+
+  # add Qt code
+  if (CISST_HAS_QT)
+    add_subdirectory (code/Qt)
+    set (sawNDITracker_LIBRARIES ${sawNDITracker_LIBRARIES} sawNDITrackerQt)
+  endif (CISST_HAS_QT)
+
+  # add all config files for this component
+  cisst_add_config_files (sawNDITracker)
 
   add_library (sawNDITracker
                ${sawNDITracker_HEADER_DIR}/sawNDITrackerExport.h
@@ -68,24 +61,6 @@ if (cisst_FOUND_AS_REQUIRED)
                          VERSION ${sawNDITracker_VERSION}
                          FOLDER "sawNDITracker")
   cisst_target_link_libraries (sawNDITracker ${REQUIRED_CISST_LIBRARIES})
-
-  # add Qt code
-  if (CISST_HAS_QT)
-    add_subdirectory (code/Qt)
-    set (sawNDITracker_LIBRARIES ${sawNDITracker_LIBRARIES} ${sawNDITrackerQt_LIBRARIES})
-  endif (CISST_HAS_QT)
-
-  set (sawNDITracker_CMAKE_CONFIG_FILE
-       "${sawNDITracker_CONFIG_FILE_DIR}/sawNDITrackerConfig.cmake")
-
-  configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/cmake/sawNDITrackerConfig.cmake.in"
-                  "${sawNDITracker_CMAKE_CONFIG_FILE}"
-                  @ONLY)
-
-  cisst_add_config_version ("${sawNDITracker_CONFIG_FILE_DIR}/sawNDITrackerConfigVersion.cmake"
-                            VERSION ${sawNDITracker_VERSION}
-                            DESTINATION "share/sawNDITracker"
-                            COMPONENT sawNDITracker)
 
   configure_file ("${sawNDITracker_SOURCE_DIR}/code/sawNDITrackerConfig.h.in"
                   "${sawNDITracker_BINARY_DIR}/include/sawNDITracker/sawNDITrackerConfig.h")
@@ -102,10 +77,6 @@ if (cisst_FOUND_AS_REQUIRED)
            RUNTIME DESTINATION bin
            LIBRARY DESTINATION lib
            ARCHIVE DESTINATION lib)
-
-  install (FILES "${sawNDITracker_CMAKE_CONFIG_FILE}"
-           DESTINATION "share/sawNDITracker"
-           COMPONENT sawNDITracker-dev)
 
 else (cisst_FOUND_AS_REQUIRED)
   message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires ${REQUIRED_CISST_LIBRARIES}")
