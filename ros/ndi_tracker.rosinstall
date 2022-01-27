@@ -13,7 +13,7 @@
 - git:
     local-name: crtk/crtk_msgs
     uri: https://github.com/collaborative-robotics/crtk_msgs
-    version: master
+    version: devel
 - git:
     local-name: cisst-saw/sawNDITracker
     uri: https://github.com/jhu-saw/sawNDITracker
