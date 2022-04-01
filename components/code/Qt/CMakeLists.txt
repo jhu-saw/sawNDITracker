@@ -46,9 +46,6 @@ if (cisst_FOUND_AS_REQUIRED)
                          FOLDER "sawNDITracker")
   cisst_target_link_libraries (sawNDITrackerQt ${REQUIRED_CISST_LIBRARIES})
 
-  # make sure the new library is known by the parent folder to add to the config file
-  set (sawNDITrackerQt_LIBRARIES sawNDITrackerQt PARENT_SCOPE)
-
   install (TARGETS sawNDITrackerQt COMPONENT sawNDITracker-Qt
            RUNTIME DESTINATION bin
            LIBRARY DESTINATION lib
