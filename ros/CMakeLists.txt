@@ -9,9 +9,8 @@
 #
 # --- end cisst license ---
 
-cmake_minimum_required (VERSION 2.8)
-
-project (ndi_tracker_ros)
+cmake_minimum_required(VERSION 3.10)
+project (ndi_tracker_ros VERSION 1.1.0)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
