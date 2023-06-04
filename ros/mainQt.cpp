@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2017-12-04
 
-  (C) Copyright 2017-2020 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2017-2023 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -83,17 +83,13 @@ int main(int argc, char * argv[])
     options.AddOptionNoValue("D", "dark-mode",
                              "replaces the default Qt palette with darker colors");
 
-    typedef std::list<std::string> managerConfigType;
-    managerConfigType managerConfig;
+    std::list<std::string> managerConfig;
     options.AddOptionMultipleValues("m", "component-manager",
                                     "JSON file to configure component manager",
                                     cmnCommandLineOptions::OPTIONAL_OPTION, &managerConfig);
 
     // check that all required options have been provided
-    std::string errorMessage;
-    if (!options.Parse(argc, argv, errorMessage)) {
-        std::cerr << "Error: " << errorMessage << std::endl;
-        options.PrintUsage(std::cerr);
+    if (!options.Parse(argc, argv, std::cerr)) {
         return -1;
     }
     std::string arguments;
