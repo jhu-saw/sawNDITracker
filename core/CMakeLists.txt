@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2011-2022 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2011-2024 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -10,7 +10,7 @@
 # --- end cisst license ---
 
 cmake_minimum_required(VERSION 3.10)
-project (sawNDITrackerAll VERSION 1.1.0)
+project (sawNDITrackerCore VERSION 1.1.0)
 
 find_package (cisst REQUIRED)
 include (${CISST_USE_FILE})
@@ -24,7 +24,7 @@ add_subdirectory (components)
 add_subdirectory (share)
 
 # Examples
-set (sawNDITracker_DIR "${sawNDITrackerAll_BINARY_DIR}/components")
+set (sawNDITracker_DIR "${sawNDITrackerCore_BINARY_DIR}/components")
 add_subdirectory (examples)
 
 include (CPack)

@@ -34,7 +34,7 @@ void mts_ros_crtk_ndi_bridge::bridge(const std::string & _component_name,
 {
     // clean ROS namespace
     std::string _clean_namespace = _component_name;
-    cisst_ros_crtk::clean_namespace(_clean_namespace);
+    cisst_ral::clean_namespace(_clean_namespace);
 
     // create factory to bridge tool as they get created
     this->add_factory_source(_component_name,

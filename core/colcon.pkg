@@ -1,4 +1,4 @@
 {
-  "name": "sawNDITrackerAll",
+  "name": "sawNDITrackerCore",
   "dependencies": ["cisst"]
 }
