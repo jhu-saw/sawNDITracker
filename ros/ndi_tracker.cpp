@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2017-12-04
 
-  (C) Copyright 2017-2023 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2017-2024 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -87,7 +87,7 @@ int main(int argc, char * argv[])
                                     cmnCommandLineOptions::OPTIONAL_OPTION, &managerConfig);
 
     // check that all required options have been provided
-    if (!options.Parse(argc, argv, std::cerr)) {
+    if (!options.Parse(ral.stripped_arguments(), std::cerr)) {
         return -1;
     }
     std::string arguments;

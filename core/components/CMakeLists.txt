@@ -70,8 +70,7 @@ if (cisst_FOUND_AS_REQUIRED)
            "${sawNDITracker_SOURCE_DIR}/include/sawNDITracker"
            "${sawNDITracker_BINARY_DIR}/include/sawNDITracker"
            DESTINATION include
-           COMPONENT sawNDITracker-dev
-           PATTERN .svn EXCLUDE)
+           COMPONENT sawNDITracker-dev)
 
   install (TARGETS sawNDITracker COMPONENT sawNDITracker
            RUNTIME DESTINATION bin

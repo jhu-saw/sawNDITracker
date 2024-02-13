@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2017-11-28
 
-  (C) Copyright 2017-2021 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2017-2024 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -57,24 +57,24 @@ void mts_ros_crtk_ndi_bridge::bridge(const std::string & _component_name,
     // required interfaces specific to this component to bridge
     const std::string _required_interface_name = _component_name + "_using_" + _interface_name;
 
-    m_subscribers_bridge->AddSubscriberToCommandWrite<std::string, std_msgs::String>
+    m_subscribers_bridge->AddSubscriberToCommandWrite<std::string, CISST_RAL_MSG(std_msgs, String)>
         (_required_interface_name, "Connect", _clean_namespace + "connect");
     m_subscribers_bridge->AddSubscriberToCommandVoid
         (_required_interface_name, "Disconnect", _clean_namespace + "disconnect");
-    m_events_bridge->AddPublisherFromEventWrite<std::string, std_msgs::String>
+    m_events_bridge->AddPublisherFromEventWrite<std::string, CISST_RAL_MSG(std_msgs, String)>
         (_required_interface_name, "Connected", _clean_namespace + "connected");
     // beep
-    m_subscribers_bridge->AddSubscriberToCommandWrite<int, std_msgs::Int32>
+    m_subscribers_bridge->AddSubscriberToCommandWrite<int, CISST_RAL_MSG(std_msgs, Int32)>
         (_required_interface_name, "Beep", _clean_namespace + "beep");
     // tracking
-    m_subscribers_bridge->AddSubscriberToCommandWrite<bool, std_msgs::Bool>
+    m_subscribers_bridge->AddSubscriberToCommandWrite<bool, CISST_RAL_MSG(std_msgs, Bool)>
         (_required_interface_name, "Track", _clean_namespace + "track");
-    m_events_bridge->AddPublisherFromEventWrite<bool, std_msgs::Bool>
+    m_events_bridge->AddPublisherFromEventWrite<bool, CISST_RAL_MSG(std_msgs, Bool)>
         (_required_interface_name, "Tracking", _clean_namespace + "tracking");
     // stray markers
-    m_subscribers_bridge->AddSubscriberToCommandWrite<bool, std_msgs::Bool>
+    m_subscribers_bridge->AddSubscriberToCommandWrite<bool, CISST_RAL_MSG(std_msgs, Bool)>
         (_required_interface_name, "TrackStrayMarkers", _clean_namespace + "track_stray_markers");
-    m_events_bridge->AddPublisherFromEventWrite<bool, std_msgs::Bool>
+    m_events_bridge->AddPublisherFromEventWrite<bool, CISST_RAL_MSG(std_msgs, Bool)>
         (_required_interface_name, "TrackingStrayMarkers", _clean_namespace + "tracking_stray_markers");
     // connections
     m_connections.Add(m_subscribers_bridge->GetName(), _required_interface_name,
