@@ -21,7 +21,7 @@ If needed, one can also add OpenIGTLink support using sawOpenIGTLink (contact th
 
 # Build
 
-See https://github.com/jhu-saw/vcs for download and build instructions.  Use the VCS file for `ndi`.
+See https://github.com/jhu-saw/vcs for download and build instructions.  Use the VCS files for `ndi`.
 
 # Tools to create geometry definitions
 
