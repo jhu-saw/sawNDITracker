@@ -21,12 +21,13 @@ If needed, one can also add OpenIGTLink support using sawOpenIGTLink (contact th
 
 # Build
 
-You can find some documentation re. compiling cisst and SAW components in the [dVRK wiki](https://github.com/jhu-dvrk/sawIntuitiveResearchKit/wiki/CatkinBuild#catkin-build-and-rosinstall)(best source if you're using Linux with ROS) and the [cisst wiki](https://github.com/jhu-cisst/cisst/wiki/Compiling-cisst-and-SAW-with-CMake)(more details and provides instructions for Windows as well).
+See https://github.com/jhu-saw/vcs for download and build instructions.  Use the VCS file for `ndi`.
 
-For Linux with ROS, we provide a rosinstall file to retrieve all the git repositories you need for sawNDITracker:
-```
-wstool merge https://raw.githubusercontent.com/jhu-saw/sawNDITracker/devel/ros/ndi_tracker.rosinstall
-```
+# Tools to create geometry definitions
+
+One can use the Python scripts from
+https://github.com/jhu-lcsr/optical-tracker-utilities to create
+geometry files for the Atracsys from scratch or from NDi ROM files.
 
 # Running the examples
  
