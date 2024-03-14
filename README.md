@@ -108,10 +108,10 @@ cisst-saw/sawNDITracker/examples$ ./mainPython.py --port /dev/ttyUSB0 --json ../
 
 ## ROS
 
-Please read the section above for the configuration file description.  The ROS node is `ndi_tracker` and can be found in the package `ndi_tracker_ros`:
+Please read the section above for the configuration file description.  The ROS node is `ndi_tracker` and can be found in the package `ndi_tracker`:
 ```sh
-roscd ndi_tracker_ros
-rosrun ndi_tracker_ros ndi_tracker -j ../share/ndi-active-tools.json 
+roscd ndi_tracker
+rosrun ndi_tracker ndi_tracker -j ../share/ndi-active-tools.json 
 ```
 
 The ROS node has a few more command line options:
