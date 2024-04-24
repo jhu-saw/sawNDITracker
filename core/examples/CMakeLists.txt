@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2009-2023 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2009-2024 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -11,10 +11,6 @@
 
 cmake_minimum_required (VERSION 3.10)
 project (sawNDITrackerExamples VERSION 1.1.0)
-
-set (CMAKE_CXX_STANDARD 14)
-set (CMAKE_CXX_STANDARD_REQUIRED ON)
-set (CMAKE_CXX_EXTENSIONS OFF)
 
 # create a list of required cisst libraries
 set (REQUIRED_CISST_LIBRARIES cisstCommon
