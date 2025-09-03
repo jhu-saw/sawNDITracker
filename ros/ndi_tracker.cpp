@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2017-12-04
 
-  (C) Copyright 2017-2020 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2017-2024 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -39,7 +39,6 @@ http://www.cisst.org/cisst/license.txt.
 #include <QApplication>
 #include <QMainWindow>
 
-
 int main(int argc, char * argv[])
 {
     // log configuration
@@ -50,8 +49,8 @@ int main(int argc, char * argv[])
     cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
     // create ROS node handle
-    ros::init(argc, argv, "saw_ndi_tracker", ros::init_options::AnonymousName);
-    ros::NodeHandle rosNodeHandle;
+    cisst_ral::ral ral(argc, argv, "ndi_tracker");
+    auto rosNode = ral.node();
 
     // parse options
     cmnCommandLineOptions options;
@@ -82,17 +81,13 @@ int main(int argc, char * argv[])
     options.AddOptionNoValue("D", "dark-mode",
                              "replaces the default Qt palette with darker colors");
 
-    typedef std::list<std::string> managerConfigType;
-    managerConfigType managerConfig;
+    std::list<std::string> managerConfig;
     options.AddOptionMultipleValues("m", "component-manager",
                                     "JSON file to configure component manager",
                                     cmnCommandLineOptions::OPTIONAL_OPTION, &managerConfig);
 
     // check that all required options have been provided
-    std::string errorMessage;
-    if (!options.Parse(argc, argv, errorMessage)) {
-        std::cerr << "Error: " << errorMessage << std::endl;
-        options.PrintUsage(std::cerr);
+    if (!options.Parse(ral.stripped_arguments(), std::cerr)) {
         return -1;
     }
     std::string arguments;
@@ -179,7 +174,7 @@ int main(int argc, char * argv[])
 
     // ROS CRTK bridge, using the derived class for NDi
     mts_ros_crtk_ndi_bridge * crtk_bridge
-        = new mts_ros_crtk_ndi_bridge("ndi_serial_crtk_bridge", &rosNodeHandle);
+        = new mts_ros_crtk_ndi_bridge("ndi_serial_crtk_bridge", rosNode);
     crtk_bridge->bridge(tracker->GetName(), "Controller",
                         rosPeriod, tfPeriod);
     crtk_bridge->add_factory_source(tracker->GetName(), "Controller",
@@ -205,7 +200,7 @@ int main(int argc, char * argv[])
     cmnLogger::Kill();
 
     // stop ROS node
-    ros::shutdown();
+    cisst_ral::shutdown();
 
     // kill all components and perform cleanup
     componentManager->KillAllAndWait(5.0 * cmn_s);

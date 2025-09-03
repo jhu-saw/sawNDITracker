@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet, Ali Uneri
   Created on: 2009-10-13
 
-  (C) Copyright 2009-2021 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2009-2023 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -350,7 +350,7 @@ void mtsNDISerial::Connect(const std::string & serialPortName)
                                      + mSerialPort.GetPortName());
 
     // set serial port settings
-    SetSerialPortSettings(osaSerialPort::BaudRate115200,
+    SetSerialPortSettings(osaSerialPort::BaudRate460800,
                           osaSerialPort::CharacterSize8,
                           osaSerialPort::ParityCheckingNone,
                           osaSerialPort::StopBitsOne,
