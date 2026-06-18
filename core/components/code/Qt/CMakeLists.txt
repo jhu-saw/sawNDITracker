@@ -25,17 +25,11 @@ find_package (cisst REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
 
 # for Qt generated header files
 include_directories (${CMAKE_CURRENT_BINARY_DIR})
-if (CISST_HAS_QT4)
-  qt4_wrap_cpp (sawNDITracker_QT_WRAP_CPP
-                ${sawNDITracker_HEADER_DIR}/mtsNDISerialControllerQtWidget.h)
-else (CISST_HAS_QT4)
-  set (CMAKE_AUTOMOC ON)
-endif (CISST_HAS_QT4)
+set (CMAKE_AUTOMOC ON)
 
 add_library (sawNDITrackerQt
              ${sawNDITracker_HEADER_DIR}/mtsNDISerialControllerQtWidget.h
-             mtsNDISerialControllerQtWidget.cpp
-             ${sawNDITracker_QT_WRAP_CPP})
+             mtsNDISerialControllerQtWidget.cpp)
 set_target_properties (sawNDITrackerQt PROPERTIES
                        VERSION ${sawNDITracker_VERSION}
                        FOLDER "sawNDITracker")
@@ -45,4 +39,3 @@ install (TARGETS sawNDITrackerQt COMPONENT sawNDITracker-Qt
          RUNTIME DESTINATION bin
          LIBRARY DESTINATION lib
          ARCHIVE DESTINATION lib)
-
