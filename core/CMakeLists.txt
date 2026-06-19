@@ -23,8 +23,10 @@ add_subdirectory (components)
 add_subdirectory (share)
 
 # Examples
-set (sawNDITracker_DIR "${sawNDITrackerCore_BINARY_DIR}/components")
-add_subdirectory (examples)
+if (CISST_HAS_QT)
+  set (sawNDITracker_DIR "${sawNDITrackerCore_BINARY_DIR}/components")
+  add_subdirectory (examples)
+endif ()
 
 include (CPack)
 cpack_add_component (sawNDITracker)
@@ -32,7 +34,9 @@ cpack_add_component (sawNDITracker-dev
                      DEPENDS sawNDITracker)
 cpack_add_component (sawNDITracker-Share
                      DEPENDS sawNDITracker)
-cpack_add_component (sawNDITracker-Qt
-                     DEPENDS sawNDITracker)
-cpack_add_component (sawNDITracker-Examples
-                     DEPENDS sawNDITracker sawNDITracker-Qt)
+if (CISST_HAS_QT)
+  cpack_add_component (sawNDITracker-Qt
+                       DEPENDS sawNDITracker)
+  cpack_add_component (sawNDITracker-Examples
+                       DEPENDS sawNDITracker sawNDITracker-Qt)
+endif ()
