@@ -18,7 +18,7 @@ set (REQUIRED_CISST_LIBRARIES
      cisstMultiTaskQt
      cisstParameterTypes
      cisstParameterTypesQt
-     cisstQt)
+)
 
 # cisst
 find_package (cisst REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
@@ -33,7 +33,8 @@ add_library (sawNDITrackerQt
 set_target_properties (sawNDITrackerQt PROPERTIES
                        VERSION ${sawNDITracker_VERSION}
                        FOLDER "sawNDITracker")
-target_link_libraries (sawNDITrackerQt ${cisst_LIBRARIES})
+target_link_libraries (sawNDITrackerQt
+                       ${cisst_LIBRARIES})
 
 install (TARGETS sawNDITrackerQt COMPONENT sawNDITracker-Qt
          RUNTIME DESTINATION bin
