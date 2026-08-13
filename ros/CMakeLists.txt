@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2009-2024 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2009-2026 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -54,58 +54,47 @@ set (REQUIRED_CISST_LIBRARIES
   cisstMultiTask
   cisstParameterTypes
   cisstParameterTypesQt
-  cisstQt)
+)
 
 # find cisst and make sure the required libraries have been compiled
-find_package (cisst 1.2.0 REQUIRED ${REQUIRED_CISST_LIBRARIES})
+find_package (cisst 1.2.0 REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
 
-if (cisst_FOUND_AS_REQUIRED)
+# set paths
+cisst_set_output_path ()
 
-  # load cisst configuration
-  include (${CISST_USE_FILE})
+# sawNDITracker has been compiled within cisst, we should find it automatically
+find_package (sawNDITracker REQUIRED)
 
-  # set paths
-  cisst_set_output_path ()
+if (sawNDITracker_FOUND)
 
-  # sawNDITracker has been compiled within cisst, we should find it automatically
-  find_package (sawNDITracker REQUIRED)
+  # sawNDITracker configuration
+  include_directories (${sawNDITracker_INCLUDE_DIR} ${ndi_tracker_SOURCE_DIR})
+  link_directories (${sawNDITracker_LIBRARY_DIR})
 
-  if (sawNDITracker_FOUND)
+  add_executable (ndi_tracker
+    mts_ros_crtk_ndi_bridge.cpp
+    mts_ros_crtk_ndi_bridge.h
+    ndi_tracker.cpp)
 
-    # sawNDITracker configuration
-    include_directories (${sawNDITracker_INCLUDE_DIR} ${ndi_tracker_SOURCE_DIR})
-    link_directories (${sawNDITracker_LIBRARY_DIR})
+  # link against non cisst libraries and saw components
+  target_link_libraries (ndi_tracker
+    ${sawNDITracker_LIBRARIES}
+    ${sawNDITrackerQt_LIBRARIES}
+    ${catkin_LIBRARIES}
+    ${cisst_LIBRARIES})
 
-    add_executable (ndi_tracker
-      mts_ros_crtk_ndi_bridge.cpp
-      mts_ros_crtk_ndi_bridge.h
-      ndi_tracker.cpp)
+  install (TARGETS ndi_tracker
+    LIBRARY DESTINATION lib/${PROJECT_NAME}
+    RUNTIME DESTINATION lib/${PROJECT_NAME}
+    LIBRARY DESTINATION lib
+    INCLUDES DESTINATION include)
 
-    # link against non cisst libraries and saw components
-    target_link_libraries (ndi_tracker
-      ${sawNDITracker_LIBRARIES}
-      ${sawNDITrackerQt_LIBRARIES}
-      ${catkin_LIBRARIES})
+  if (ROS_VERSION EQUAL 2)
+    ament_target_dependencies (
+      ndi_tracker
+      ${ROS2_depends}
+      )
+    ament_package ()
+  endif ()
 
-    # link against cisst libraries (and dependencies)
-    cisst_target_link_libraries (ndi_tracker ${REQUIRED_CISST_LIBRARIES})
-
-    install (TARGETS ndi_tracker
-      LIBRARY DESTINATION lib/${PROJECT_NAME}
-      RUNTIME DESTINATION lib/${PROJECT_NAME}
-      LIBRARY DESTINATION lib
-      INCLUDES DESTINATION include)
-
-    if (ROS_VERSION EQUAL 2)
-      ament_target_dependencies (
-        ndi_tracker
-        ${ROS2_depends}
-        )
-      ament_package ()
-    endif ()
-
-  endif (sawNDITracker_FOUND)
-
-else (cisst_FOUND_AS_REQUIRED)
-  message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires ${REQUIRED_CISST_LIBRARIES}")
-endif (cisst_FOUND_AS_REQUIRED)
+endif (sawNDITracker_FOUND)

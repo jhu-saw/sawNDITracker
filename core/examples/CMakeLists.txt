@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2009-2024 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2009-2026 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -21,46 +21,37 @@ set (REQUIRED_CISST_LIBRARIES cisstCommon
                               cisstMultiTask
                               cisstParameterTypes
                               cisstParameterTypesQt
-                              cisstQt)
+)
 
 # find cisst and make sure the required libraries have been compiled
-find_package (cisst 1.2.0 COMPONENTS ${REQUIRED_CISST_LIBRARIES})
+find_package (cisst 1.2.0 REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
 
-if (cisst_FOUND_AS_REQUIRED)
+# catkin/ROS paths
+cisst_set_output_path ()
 
-  # load cisst configuration
-  include (${CISST_USE_FILE})
+# sawNDITracker has been compiled within cisst, we should find it automatically
+find_package (sawNDITracker REQUIRED)
 
-  # catkin/ROS paths
-  cisst_set_output_path ()
+if (sawNDITracker_FOUND)
 
-  # sawNDITracker has been compiled within cisst, we should find it automatically
-  find_package (sawNDITracker REQUIRED)
+  # sawNDITracker configuration
+  include_directories (${sawNDITracker_INCLUDE_DIR})
+  link_directories (${sawNDITracker_LIBRARY_DIR})
 
-  if (sawNDITracker_FOUND)
+  add_executable (sawNDITrackerQtExample mainQt.cpp)
+  set_target_properties (sawNDITrackerQtExample PROPERTIES
+                         COMPONENT sawNDITracker-Examples
+                         FOLDER "sawNDITracker")
 
-    # sawNDITracker configuration
-    include_directories (${sawNDITracker_INCLUDE_DIR})
-    link_directories (${sawNDITracker_LIBRARY_DIR})
+  # link against non cisst libraries and saw components
+  target_link_libraries (sawNDITrackerQtExample
+                         ${sawNDITracker_LIBRARIES}
+                         ${sawNDITrackerQt_LIBRARIES}
+                         ${cisst_LIBRARIES})
 
-    add_executable (sawNDITrackerQtExample mainQt.cpp)
-    set_target_properties (sawNDITrackerQtExample PROPERTIES
-                           COMPONENT sawNDITracker-Examples
-                           FOLDER "sawNDITracker")
+  install (TARGETS sawNDITrackerQtExample COMPONENT sawNDITracker-Examples
+           RUNTIME DESTINATION bin
+           LIBRARY DESTINATION lib
+           ARCHIVE DESTINATION lib)
 
-    # link against non cisst libraries and saw components
-    target_link_libraries (sawNDITrackerQtExample
-                           ${sawNDITracker_LIBRARIES}
-                           ${sawNDITrackerQt_LIBRARIES})
-
-    # link against cisst libraries (and dependencies)
-    cisst_target_link_libraries (sawNDITrackerQtExample ${REQUIRED_CISST_LIBRARIES})
-
-    install (TARGETS sawNDITrackerQtExample COMPONENT sawNDITracker-Examples
-             RUNTIME DESTINATION bin
-             LIBRARY DESTINATION lib
-             ARCHIVE DESTINATION lib)
-
-  endif (sawNDITracker_FOUND)
-
-endif (cisst_FOUND_AS_REQUIRED)
+endif (sawNDITracker_FOUND)
