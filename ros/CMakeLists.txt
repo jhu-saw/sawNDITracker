@@ -10,7 +10,7 @@
 # --- end cisst license ---
 
 cmake_minimum_required(VERSION 3.10)
-project (ndi_tracker VERSION 1.1.0)
+project (ndi_tracker VERSION 1.2.0)
 
 # first test for ROS1
 set (ROS1_depends cisst_ros_crtk roscpp roslib)

@@ -1,6 +1,17 @@
 Change log
 ==========
 
+1.2.0 (TBD)
+===========
+
+* New features:
+  * Added ROS 1/ROS 2 build support and a `colcon.pkg` file.
+  * Updated the default Aurora baud rate to 430800.
+* Build:
+  * Modernized CMake configuration for current cisst and CRTK ROS bridge support; examples now require Qt.
+* Documentation:
+  * Updated setup documentation, including Aurora hardware notes.
+
 1.1.0 (2021-04-08)
 ==================
 
