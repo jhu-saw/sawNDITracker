@@ -1,8 +1,8 @@
 Change log
 ==========
 
-1.2.0 (TBD)
-===========
+1.2.0 (2026-08-22)
+==================
 
 * New features:
   * Added ROS 1/ROS 2 build support and a `colcon.pkg` file.
