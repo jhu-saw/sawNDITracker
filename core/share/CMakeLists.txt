@@ -10,7 +10,7 @@
 # --- end cisst license ---
 
 cmake_minimum_required (VERSION 3.10)
-project (sawNDITrackerShare VERSION 1.1.0)
+project (sawNDITrackerShare VERSION 1.2.0)
 
 install (DIRECTORY
          "${sawNDITrackerShare_SOURCE_DIR}"
